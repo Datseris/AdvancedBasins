@@ -4,12 +4,13 @@ using Attractors, OrdinaryDiffEq, GLMakie
 using Graphs, Random
 
 # TODO: incidence multiplication must become in place
-# and all these vector access are bad and allocating...
 function second_order_kuramoto!(du, u, p, t)
     (; N, α, K, incidence, P) = p
-    du[1:N] .= u[1+N:2*N]
+    ωs = view(u, N+1:2N)
+    du[1:N] .= ωs
     sine_term = K .* (incidence * sin.(incidence' * u[1:N]))
-    du[N+1:end] .= P .- α .* u[1+N:2*N] .- sine_term
+    @. du[N+1:end] .= P - α*ωs - sine_term
+    return nothing
 end
 
 mutable struct KuramotoParameters{M}
@@ -19,7 +20,7 @@ mutable struct KuramotoParameters{M}
     P::Vector{Float64}
     K::Float64
 end
-function KuramotoParameters(; N = 10, α = 0.1, K = 5.0, seed = 53867481290)
+function KuramotoParameters(; N = 10, α = 0.1, K = 6.0, seed = 53867481290)
     rng = Random.Xoshiro(seed)
     g = random_regular_graph(N, 3; rng)
     incidence = incidence_matrix(g, oriented=true)
@@ -86,13 +87,13 @@ complete = y -> vcat(π .* rand(N), y)
 
 psys = projected_integrator(ds, projection, complete; diffeq)
 
-yg = range(-10, 10; length = 101)
+yg = range(-17, 17; length = 101)
 grid = ntuple(x -> yg, dimension(psys))
 mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.1,
     diffeq,
-    mx_chk_fnd_att = 100,
-    mx_chk_loc_att = 100,
-    safety_counter_max = Int(1e5),
+    mx_chk_fnd_att = 1000,
+    mx_chk_loc_att = 1000,
+    safety_counter_max = Int(1e8),
     Ttr = 400.0
 )
 
@@ -100,7 +101,7 @@ n = 100
 labels = []
 ics = []
 for k = 1:n
-    u = (rand(N) .- 0.5)
+    u = 12(rand(N) .- 0.5)
     @show l = mapper(u)
     # push!(ics, ([psys.complete_state; u],l))
     push!(labels, l)
@@ -118,14 +119,31 @@ end
 display(fig)
 
 
-# %% Lyapunov exponents
+# %% Lyapunov exponents and Order Parameter
+function order_parameter(φs)
+    return abs(sum(φ -> exp(im*φ), φs))/length(φs)
+end
+
 using ChaosTools
 λs = Dict{Int, Float64}()
+Rs = Dict{Int, Float64}()
 for i in 1:n
     l = labels[i]
-    haskey(λs, l) && continue
+    haskey(Rs, l) && continue
+    @show l
     u = ics[i]
-    λ = lyapunov(ds, 10000.0; u0 = u, Ttr = 100.0)
-    λs[l] = λ
-    @show l, λ
+    fullu = vcat(π .* rand(N), u)
+    tr = trajectory(ds, 10.0, fullu; Ttr = 100)
+    ωs = tr[end, projection]
+    # @show ωs
+    @show std(ωs)
+    # R = order_parameter(tr[end, 1:N])
+    phases = tr[:, 1:N]
+    phases = tr[:, projection]
+    R = mean(map(order_parameter, phases))
+    @show R
+    # λ = lyapunov(ds, 10000.0; u0 = fullu, Ttr = 100.0)
+    # λs[l] = λ
+    Rs[l] = R
+    # @show l, λ
 end
