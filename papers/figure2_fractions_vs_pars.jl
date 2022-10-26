@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate
-using DynamicalSystems, OrdinaryDiffEq, CairoMakie
+using Attractors, OrdinaryDiffEq, CairoMakie
 using GLMakie, Random
 include(srcdir("vis", "basins_plotting.jl"))
 
@@ -99,7 +99,7 @@ pinteg = projected_integrator(ds, projection, complete_state)
 # Make grid
 g = 101 # division of grid
 xgs = [range(-8, 15; length = g÷10) for i in 1:P]
-Tg = range(230, 300; length = g)
+Tg = range(230, 350; length = g)
 grid = (xgs..., Tg)
 
 # Push stuff into fraction continuation configurations
@@ -148,7 +148,7 @@ for entry in systems_param_configs
     push!(fractions_container, output["fractions_curves"])
 end
 
-systems = [s[1] for s in systems_param_configs]
+systems = getindex.(systems_param_configs, 1)
 
 # %% Make the plot
 L = length(systems_param_configs)
@@ -157,13 +157,13 @@ fig, axs = subplotgrid(L, 1; ylabels = systems)
 for i in 1:L
     prange = systems_param_configs[i][3]
     basins_fractions_plot!(axs[i, 1], fractions_container[i], prange)
-    axs[i, 1].xlabel = systems_param_configs[i][5] # pname
     # legend
     entries = systems_param_configs[i][end]
     elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
     labels = last.(entries)
     axislegend(axs[i, 1], elements, labels; position = :rt)
 end
+axs[end, 1].xlabel = "parameter"
 fig
 
 # wsave(papersdir("figures", "figure2_fractions.pdf"), fig)

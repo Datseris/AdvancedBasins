@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate
-using DynamicalSystems, OrdinaryDiffEq
+using Attractors, DynamicalSystemsBase, OrdinaryDiffEq
 using Random
 include(srcdir("vis", "basins_plotting.jl"))
 diffeq = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9, maxiters = 1e12)
@@ -42,13 +42,13 @@ projection = (D-P+1):(D+1)
 complete_state = zeros(D-length(projection)+1)
 pinteg = projected_integrator(ds, projection, complete_state)
 # Make grid
-g = 101 # division of grid
-xgs = [range(-8, 15; length = g÷10) for i in 1:P]
-Tg = range(230, 300; length = g)
+g = 201 # division of grid
+xgs = [range(-10, 20; length = g÷10) for i in 1:P]
+Tg = range(230, 350; length = g)
 grid = (xgs..., Tg)
 
 pidx = 1
-prange = range(5, 19; length = 3)
+prange = range(5, 19; length = 100)
 prange = [6.0, 12.0, 18.0]
 pname = "S"
 
@@ -69,11 +69,21 @@ sampler, = statespace_sampler(Random.MersenneTwister(1234);
 
 
 # %% Normal mapping via `basins_fractions`
-S = 12.0
-
+S = 18.0
+set_parameter!(ds, 1, S)
+fracs = basins_fractions(mapper, sampler; N = 100)
 
 
 # %% Continutation
+mapper = AttractorsViaRecurrencesSparse(pinteg, grid;
+    Ttr = 100,
+    Δt = 1.0,
+    mx_chk_fnd_att = 20,
+    mx_chk_loc_att = 20,
+    safety_counter_max = 1e8,
+    diffeq,
+)
+
 continuation = RecurrencesSeedingContinuation(mapper; threshold = Inf)
 fractions_curves, attractors_info = basins_fractions_continuation(
     continuation, prange, pidx, sampler;
