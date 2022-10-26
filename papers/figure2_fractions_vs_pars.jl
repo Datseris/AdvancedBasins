@@ -106,8 +106,8 @@ grid = (xgs..., Tg)
 mapper_config = (;
     Ttr = 100,
     Δt = 1.0,
-    mx_chk_fnd_att = 20,
-    mx_chk_loc_att = 20,
+    mx_chk_fnd_att = 300,
+    mx_chk_loc_att = 1000,
     safety_counter_max = 1e8,
 )
 pidx = 1
