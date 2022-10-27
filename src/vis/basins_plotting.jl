@@ -50,6 +50,19 @@ function animate_attractors_continuation(
 
 end
 
+function plot_attractors(attractors::Dict;  access = [1,2], markersize = 12)
+    fig = Figure()
+    ax = Axis(fig[1,1])
+    ukeys = keys(attractors)
+    colors = Dict(k => (to_color(COLORS[i]), 0.75) for (i, k) in enumerate(ukeys))
+    for k in ukeys
+        scatter!(ax, vec(attractors[k][:, access]); color = colors[k],
+        label = "$k", markersize = markersize + rand(-2:4))
+    end
+    axislegend(ax)
+    return fig
+end
+
 function fractions_to_cumulative(fractions_curves)
     ukeys = unique_keys(fractions_curves)
     bands = [zeros(length(prange)) for k in ukeys]

@@ -44,7 +44,11 @@ function second_order_kuramoto!(du, u, p, t)
 end
 
 N = 10
-p = KuramotoParameters(; N)
+K = 10.0
+# for K < 1 you should find one or two attractors (unsynch).
+# for 4 < K < 7 : zillions of attractors
+# K > 9 one attractor (synchronized).
+p = KuramotoParameters(; N, K)
 
 ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2N), p, (J, z0, p, n) -> nothing)
 diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = Inf)
