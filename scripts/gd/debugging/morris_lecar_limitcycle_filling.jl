@@ -1,3 +1,6 @@
+# IMPORTANT NOTICE: This PR is based on the code in
+# https://github.com/JuliaDynamics/Attractors.jl/pull/14
+# So you need to have this branch checked out!!!
 using DrWatson
 @quickactivate
 using Attractors
