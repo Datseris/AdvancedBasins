@@ -1,6 +1,7 @@
 using DrWatson 
 @quickactivate
 using DynamicalSystems
+using Attractors
 using JLD2
 using CairoMakie
 
@@ -19,14 +20,22 @@ function plot_filled_curves(fractions, prms, figurename)
         for i in ind; push!(vh, k[i] => v[i]); end        
         ind = findall(v .<= 0.05)
         if length(ind) > 0 
-            push!(vh, -1 => sum(v[ind]))
+            try 
+                if vh[-1] > 0.05
+                    vh[-1] += sum(v[ind])
+                else 
+                    vh[-1] = sum(v[ind])
+                end
+            catch 
+                push!(vh, -1 => sum(v[ind]))
+            end
         end
         # push!(ff, vh)
         ff[n] = vh
     end
     fractions_curves = ff
 
-    ukeys = ChaosTools.unique_keys(fractions_curves)
+    ukeys = Attractors.unique_keys(fractions_curves)
     # ps = 1:length(fractions_curves)
     ps = prms
 
@@ -55,7 +64,8 @@ function plot_filled_curves(fractions, prms, figurename)
     axislegend(ax; position = :lt)
     # display(fig)
 
-    save(string(projectdir(), "/plots/a/", figurename),fig)
+    # save(string(projectdir(), "/plots/a/", figurename),fig)
+    save(figurename,fig)
 # Makie.save("lorenz84_fracs.png", fig; px_per_unit = 4)
 end
 
@@ -78,3 +88,15 @@ end
 
 # @load "fraction_test_continuation_kur.jld2"
 # plot_filled_curves(f, "kur_mcbb_continuation_method.png")
+#
+# 
+# Clustering with Threshold Inf (Euclidean)  and samples taken from uniform dist [-π,π].
+d = load("fraction_test_continuation_kur.jld2")
+f = d["f"]
+K = d["K"]
+plot_filled_curves(f, K,  "kur_continuation_recurrence_pi_pi.png")
+
+d = load("fraction_test_continuation_kur_mccb_8000.jld2")
+f = d["f"]
+K = d["K"]
+plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_8000.png")
