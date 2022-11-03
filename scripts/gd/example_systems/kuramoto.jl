@@ -55,6 +55,14 @@ diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = Inf)
 
 uu = trajectory(ds, 1500; Δt = 0.1, diffeq)
 
+recurrence_kwargs = (;
+    mx_chk_fnd_att = 2000,
+    mx_chk_loc_att = 2000,
+    Ttr = 1000.0,
+    safety_counter_max = Int(1e8),
+    diffeq,
+)
+
 # %% Mapper that projects into frequencies ω
 projection = N+1:2N
 complete = y -> vcat(π .* rand(N), y)
@@ -64,11 +72,7 @@ psys = projected_integrator(ds, projection, complete; diffeq)
 yg = range(-17, 17; length = 101)
 grid = ntuple(x -> yg, dimension(psys))
 mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.1,
-    diffeq,
-    mx_chk_fnd_att = 2000,
-    mx_chk_loc_att = 2000,
-    Ttr = 1000.0,
-    safety_counter_max = Int(1e8),
+    recurrence_kwargs...
 )
 
 n = 1000
@@ -121,3 +125,22 @@ for i in 1:n
     λ = lyapunov(ds, 10000.0; u0 = fullu, Ttr = 100.0)
     @show λ
 end
+
+
+# %% continuation
+# If we have the recurrences continuation, we can always map it to
+# the featurized continuation, as we have the attractors.
+prange = range(0, 10; length = 101)
+pidx = :K
+
+mapper = AttractorsViaRecurrences(psys, grid; Δt = 0.1, recurrence_kwargs...)
+
+continuation = RecurrencesSeedingContinuation(mapper; threshold = Inf)
+
+fractions_curves, attractors_info = basins_fractions_continuation(
+    continuation, prange, pidx;
+    show_progress = true, samples_per_parameter = 100
+)
+
+fig, ax = basins_fractions_plot(fractions_curves, prange)
+display(fig)

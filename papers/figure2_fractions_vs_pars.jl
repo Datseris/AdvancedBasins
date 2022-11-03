@@ -6,8 +6,9 @@ include(srcdir("vis", "basins_plotting.jl"))
 
 # Global arguments for all sub-panels
 N = samples_per_parameter = 100
-R = total_parameter_values = 101
-diffeq = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9, maxiters = 1e12)
+P = total_parameter_values = 101
+# Diffeq solvers used everywhere (not even stored/saved)
+diffeq = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9, maxiters = Inf)
 
 # In `systems_param_configs` we put a tuple of arguments related to the system,
 # such as the  name, system, parameter range and index,
@@ -32,7 +33,7 @@ mapper_config = (;
     safety_counter_max = 1e8,
     Δt = 0.1,
 )
-prange = range(1.34, 1.37; length = R)
+prange = range(1.34, 1.37; length = P)
 pidx = 2
 pname = "G"
 entries = [1 => "f.p.", 2 => "l.c.", 3 => "c.a."]
@@ -52,7 +53,7 @@ mapper_config = (;
     safety_counter_max = 1e8,
     Δt = 0.1,
 )
-prange = range(22.0, 26.0; length = R)
+prange = range(22.0, 26.0; length = P)
 pname = "ρ"
 pidx = 2
 entries = [1 => "f.p.", 2 => "f.p.", 3 => "c.a."]
@@ -111,7 +112,7 @@ mapper_config = (;
     safety_counter_max = 1e8,
 )
 pidx = 1
-prange = range(5, 19; length = R)
+prange = range(5, 19; length = P)
 pname = "S"
 entries = [1 => "cold", 2 => "warm"]
 push!(systems_param_configs, ("climatetoy_N=$(D)", pinteg, prange, pidx, pname, grid, mapper_config, entries))
@@ -120,7 +121,7 @@ push!(systems_param_configs, ("climatetoy_N=$(D)", pinteg, prange, pidx, pname, 
 # produce or load function
 function produce_basins_fractions(config)
     (; ds, prange, pidx, grid, mapper_config) = config
-    mapper = AttractorsViaRecurrencesSparse(ds, grid; mapper_config..., diffeq)
+    mapper = AttractorsViaRecurrences(ds, grid; mapper_config..., diffeq)
     sampler, = statespace_sampler(Random.MersenneTwister(1234);
         min_bounds = minimum.(grid), max_bounds = maximum.(grid)
     )

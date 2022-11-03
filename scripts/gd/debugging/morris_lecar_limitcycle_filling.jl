@@ -10,20 +10,20 @@ using ChaosTools: estimate_period
 
 include(srcdir("vis", "basins_plotting.jl"))
 
-stop_at_dt = true
+stop_at_Δt = false
 store_once_per_cell = true
 Δt = 0.15
 mx_chk_loc_att = 1000
 mx_chk_fnd_att = 2
 I = 0.115
+xg = yg = range(-1,1; length = 2000)
 
 ds = Systems.morris_lecar(; I)
 diffeq = (reltol = 1e-9, abstol = 1e-9, alg = Vern9())
-xg = yg = range(-1,1,length = 20000)
 mapper = AttractorsViaRecurrences(ds, (xg, yg);
     mx_chk_fnd_att,
     mx_chk_loc_att,
-    stop_at_dt,
+    stop_at_Δt,
     store_once_per_cell,
     sparse = true,
     Δt,
@@ -60,7 +60,7 @@ label = """
 I = $I
 mx_chk_loc_att = $(mx_chk_loc_att)
 mx_chk_fnd_att = $(mx_chk_fnd_att)
-stop_at_dt = $(stop_at_dt)
+stop_at_Δt = $(stop_at_Δt)
 store_once_per_cell = $(store_once_per_cell)
 mean_integ_dt = $(round(mean_integ_dt; sigdigits = 3))
 period = $(period)
