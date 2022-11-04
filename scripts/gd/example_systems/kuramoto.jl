@@ -1,16 +1,18 @@
 using DrWatson
 @quickactivate
-using Attractors, OrdinaryDiffEq, GLMakie
-using Graphs, Random
+using Attractors, OrdinaryDiffEq, GLMakie, Random
+using SparseArrays: sparse
+using Graphs: random_regular_graph, incidence_matrix
+include(srcdir("vis", "basins_plotting.jl"))
 
 # Actually fast Kuramoto code. Comparison of performance:
 # 7.900 ns (0 allocations: 0 bytes) # current
 # 291.144 ns (5 allocations: 784 bytes) # previous, and already improvement of Alex's original
-mutable struct KuramotoParameters{M, T}
+mutable struct KuramotoParameters{M}
     N::Int
     α::Float64
     Δ::M
-    ΔT::T
+    ΔT::M
     P::Vector{Float64}
     K::Float64
     # Both of these are dummies
@@ -24,7 +26,8 @@ function KuramotoParameters(; N = 10, α = 0.1, K = 6.0, seed = 53867481290)
     P = [isodd(i) ? +1.0 : -1.0 for i = 1:N]
     x = Δ' * zeros(N)
     y = zeros(N)
-    return KuramotoParameters(N, α, Δ, Δ', P, K, x, y)
+    ΔT = sparse(Matrix(Δ'))
+    return KuramotoParameters(N, α, Δ, ΔT, P, K, x, y)
 end
 using LinearAlgebra: mul!
 function second_order_kuramoto!(du, u, p, t)
@@ -44,7 +47,7 @@ function second_order_kuramoto!(du, u, p, t)
 end
 
 N = 10
-K = 10.0
+K = 4.0
 # for K < 1 you should find one or two attractors (unsynch).
 # for 4 < K < 7 : zillions of attractors
 # K > 9 one attractor (synchronized).
@@ -57,9 +60,9 @@ uu = trajectory(ds, 1500; Δt = 0.1, diffeq)
 
 recurrence_kwargs = (;
     mx_chk_fnd_att = 2000,
-    mx_chk_loc_att = 2000,
-    Ttr = 1000.0,
-    safety_counter_max = Int(1e8),
+    mx_chk_loc_att = 5000,
+    Ttr = 100.0,
+    mx_chk_safety = Int(1e5),
     diffeq,
 )
 
@@ -71,9 +74,7 @@ psys = projected_integrator(ds, projection, complete; diffeq)
 
 yg = range(-17, 17; length = 101)
 grid = ntuple(x -> yg, dimension(psys))
-mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.1,
-    recurrence_kwargs...
-)
+mapper = AttractorsViaRecurrences(psys, grid; Δt = 0.1, recurrence_kwargs...)
 
 n = 1000
 labels = []
@@ -104,7 +105,8 @@ function order_parameter(φs)
     return abs(sum(φ -> exp(im*φ), φs))/length(φs)
 end
 
-using ChaosTools, Statistics
+using ChaosTools: lyapunov
+using Statistics
 
 Rs = Dict()
 for i in 1:n
@@ -130,7 +132,8 @@ end
 # %% continuation
 # If we have the recurrences continuation, we can always map it to
 # the featurized continuation, as we have the attractors.
-prange = range(0, 10; length = 101)
+psys = projected_integrator(ds, projection, complete; diffeq)
+prange = range(0, 10; length = 11)
 pidx = :K
 
 mapper = AttractorsViaRecurrences(psys, grid; Δt = 0.1, recurrence_kwargs...)
@@ -139,8 +142,15 @@ continuation = RecurrencesSeedingContinuation(mapper; threshold = Inf)
 
 fractions_curves, attractors_info = basins_fractions_continuation(
     continuation, prange, pidx;
-    show_progress = true, samples_per_parameter = 100
+    show_progress = true, samples_per_parameter = 10
 )
 
-fig, ax = basins_fractions_plot(fractions_curves, prange)
+fig = basins_fractions_plot(fractions_curves, prange)
 display(fig)
+
+# %% Aggregate attractors by clustering
+function featurizer_kuramoto(A, t)
+    ωs = A[end]
+    x = std(ωs)
+    return [x]
+end
