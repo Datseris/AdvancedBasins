@@ -1,7 +1,6 @@
 # This file defines convenience functions for plotting basins fractions
 include("theme.jl")
 
-
 function animate_attractors_continuation(
         ds, attractors_info, prange, pidx;
         savename = "test.mp4", access = [1,2],
@@ -63,9 +62,9 @@ function plot_attractors(attractors::Dict;  access = [1,2], markersize = 12)
     return fig
 end
 
-function fractions_to_cumulative(fractions_curves)
+function fractions_to_cumulative(fractions_curves, prange)
     ukeys = unique_keys(fractions_curves)
-    bands = [zeros(length(prange)) for k in ukeys]
+    bands = [zeros(length(prange)) for _ in ukeys]
     for i in eachindex(fractions_curves)
         for (j, k) in enumerate(ukeys)
             bands[j][i] = get(fractions_curves[i], k, 0)
@@ -81,7 +80,7 @@ end
 function basins_fractions_plot!(ax, fractions_curves, prange;
         add_legend = false
     )
-    ukeys, bands = fractions_to_cumulative(fractions_curves)
+    ukeys, bands = fractions_to_cumulative(fractions_curves, prange)
 
     for (j, k) in enumerate(ukeys)
         if j == 1

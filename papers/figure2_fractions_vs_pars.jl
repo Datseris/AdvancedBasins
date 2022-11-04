@@ -93,6 +93,17 @@ config = FractionsRecurrencesConfig("climatetoy_N=$(X)", ds, prange, pidx, grid,
 push!(configs, config)
 push!(attractor_names, entries)
 
+# Cell differentiation model
+ds = cell_differentiation()
+mapper_config = (;mx_chk_safety = Int(1e9))
+grid = ntuple(i -> range(0, 100, length=101), 3)
+pidx = 1 # parameter Kd
+prange = range(1e-2, 1e2; length = P)
+entries = nothing
+config = FractionsRecurrencesConfig("cells", ds, prange, pidx, grid, mapper_config, N)
+push!(configs, config)
+push!(attractor_names, entries)
+
 # %% Run all systems through the `produce_or_load` pipeline (see `src`)
 fractions_container = []
 for config in configs
@@ -103,6 +114,7 @@ end
 
 # %% Make the plot
 systems = getproperty.(configs, :name)
+systems = [split(s, '_')[1] for s in systems]
 L = length(configs)
 fig, axs = subplotgrid(L, 1; ylabels = systems)
 
@@ -111,11 +123,13 @@ for i in 1:L
     basins_fractions_plot!(axs[i, 1], fractions_container[i], prange)
     # legend
     entries = attractor_names[i]
-    elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
-    labels = last.(entries)
-    axislegend(axs[i, 1], elements, labels; position = :rt)
+    if !isnothing(entries)
+        elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
+        labels = last.(entries)
+        axislegend(axs[i, 1], elements, labels; position = :rt)
+    end
 end
 axs[end, 1].xlabel = "parameter"
-fig
-
-# wsave(papersdir("figures", "figure2_fractions.pdf"), fig)
+rowgap!(fig.layout, 4)
+display(fig)
+wsave(papersdir("figures", "figure2_fractions.pdf"), fig)

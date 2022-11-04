@@ -31,7 +31,7 @@ grid = ntuple(x->xg, N);
 
 mapper = Attractors.AttractorsViaRecurrences(ds, grid;  diffeq=(alg=Vern9(),), sparse=true,
 mx_chk_safety = Int(1e9));
-sampler, = ChaosTools.statespace_sampler(Random.MersenneTwister(1234);
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
     min_bounds = [0.0, 0, 0], max_bounds = [50, 50, 50]
 );
 
@@ -49,7 +49,7 @@ num_fps = length.(values(fractions_curves))
 # using JLD2
 # jldsave("$(datadir())/fractions_curves/fractions_curves_celldifferentiation.jld2"; fractions_curves, params=Kds)
 
-
+basins_fractions_plot(fractions_curves, Kds)
 
 # ---------------------------------------------------------------------------- #
 #                            Replicating the results                           #

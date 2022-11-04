@@ -1,6 +1,6 @@
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
-function lorenz96_ebm_gelbrecht_rule(dx, x, p, t)
+function lorenz96_ebm_gelbrecht_rule!(dx, x, p, t)
     N = length(x) - 1 # number of grid points of Lorenz 96
     T = x[end]
     a₀ = 0.5
@@ -31,7 +31,7 @@ end
 function lorenz96_ebm_gelbrecht(; N = 32, S = 8.0)
     u0 = [rand(N)..., 230.0]
     p0 = [S] # solar constant
-    ds = ContinuousDynamicalSystem(lorenz96_ebm_gelbrecht_rule, u0, p0)
+    ds = ContinuousDynamicalSystem(lorenz96_ebm_gelbrecht_rule!, u0, p0)
     return ds
 end
 # Above system, but projected to the last `P` dimensions
@@ -41,4 +41,21 @@ function lorenz96_ebm_gelbrecht_projected(; P = 6, N = 32, kwargs...)
     complete_state = zeros(N-length(projection)+1)
     pinteg = projected_integrator(ds, projection, complete_state)
     return pinteg
+end
+
+# Cell differentiation model (need citation)
+function cell_differentiation_rule!(du, u, p, t)
+    Kd, α, β, n = p
+    sum_u = sum(u)
+    @inbounds for i ∈ eachindex(du)
+        C = (2*u[i]^2) / (Kd + 4*sum_u + sqrt( Kd^2 + 8*sum_u*Kd )  )
+        du[i] = α + (β*C^n)/(1+C^n) - u[i]
+    end
+    return nothing
+end
+
+function cell_differentiation(N = 3, u0 = rand(N); α=4, β=20, n=1.5, Kd=1.0)
+    p = [Kd, α, β, n]
+    ds = ContinuousDynamicalSystem(cell_differentiation_rule!, u0, p)
+    return ds
 end
