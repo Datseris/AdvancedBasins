@@ -100,3 +100,9 @@ d = load("fraction_test_continuation_kur_mccb_8000.jld2")
 f = d["f"]
 K = d["K"]
 plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_8000.png")
+
+
+d = load("fraction_test_continuation_kur_new_defs.jld2")
+f = d["f"]
+K = d["K"]
+plot_filled_curves(f, K,  "kur_continuation_recurrence_pi_pi_new_def.png")

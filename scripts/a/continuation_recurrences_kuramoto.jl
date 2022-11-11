@@ -1,44 +1,56 @@
 using DrWatson 
 @quickactivate
 using Revise
-using LightGraphs
-using Random
-using DifferentialEquations
 using DynamicalSystems
+using Attractors
+using Random
+using Graphs
+using OrdinaryDiffEq:Tsit5
+using Statistics:mean
 using JLD2
-using Statistics
-using CairoMakie
 
 
 function second_order_kuramoto!(du, u, p, t)
-    N = p[1]; α = p[2]; K = p[3]; incidence = p[4]; P = p[5];   
-    du[1:N] .= u[1+N:2*N]
-    du[N+1:end] .= P .- α .* u[1+N:2*N] .- K .* (incidence * sin.(incidence' * u[1:N]))
+    (; N, α, K, incidence, P) = p
+    # N = p[1]; α = p[2]; K = p[3]; incidence = p[4]; P = p[5];
+    ωs = view(u, N+1:2N)
+    du[1:N] .= ωs
+    sine_term = K .* (incidence * sin.(incidence' * u[1:N]))
+    @. du[N+1:end] .= P - α*ωs - sine_term
+    return nothing
 end
+
+mutable struct KuramotoParameters{M}
+    N::Int
+    α::Float64
+    incidence::M
+    P::Vector{Float64}
+    K::Float64
+end
+function KuramotoParameters(; N = 10, α = 0.1, K = 6.0, seed = 53867481290)
+    rng = Random.Xoshiro(seed)
+    g = random_regular_graph(N, 3; rng)
+    incidence = incidence_matrix(g, oriented=true)
+    P = [isodd(i) ? +1.0 : -1.0 for i = 1:N]
+    return KuramotoParameters(N, α, incidence, P, K)
+end
+
 
 function get_attractors(K,Nt)
 
-	seed = 5386748129040267798
-	Random.seed!(seed)
 	# Set up the parameters for the network
 	N = 30 # in this case this is the number of oscillators, the system dimension is twice this value
-	g = random_regular_graph(N, 3)
-	E = incidence_matrix(g, oriented=true)
-	P = [isodd(i) ? +1. : -1. for i = 1:N]
-	#K = 2.
-        ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2*N), [N, 0.1, K, E, vec(P)], (J,z0, p, n) -> nothing)
+        p = KuramotoParameters(; N)
+        ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2*N), p, (J, z0, p, n) -> nothing)
         diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
 
-        # get the equilibrium state of the system after a long transient.
-        uu = trajectory(ds, 1500; Δt = 0.1, diffeq)
-        Δϕ = uu[end][1:N]; Δω = uu[end][N+1:2N]; 
         
-        _complete(y) = (length(y) == N) ? [Δϕ; Δω] : y; 
+        _complete(y) = (length(y) == N) ? zeros(2*N) : y; 
         _proj_state(y) = y[N+1:2*N]
         psys = projected_integrator(ds, _proj_state, _complete; diffeq)
         yg = range(-17, 17; length = 31)
         grid = ntuple(x -> yg, dimension(psys))
-	mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
+	mapper = Attractors.AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
             diffeq, 
             mx_chk_fnd_att = 100,
             mx_chk_loc_att = 100,
@@ -47,7 +59,7 @@ function get_attractors(K,Nt)
 
 	ics = []
 	for k = 1:Nt
-		u = vec([pi.*rand(N) (rand(N) .- 0.5).*12])
+		u = 2*pi.*(rand(2*N) .- 0.5)
 		@show l = mapper(u)
 		# push!(ics, ([psys.complete_state; u],l))
 		push!(ics, l)
@@ -59,15 +71,10 @@ end
 
 function continuation_problem(;thr = Inf, metric = Euclidean())
 
-	seed = 5386748129040267798
-	Random.seed!(seed)
 	# Set up the parameters for the network
 	N = 30 # in this case this is the number of oscillators, the system dimension is twice this value
-	g = random_regular_graph(N, 3)
-	E = incidence_matrix(g, oriented=true)
-	P = [isodd(i) ? +1. : -1. for i = 1:N]
-        K = 1.
-        ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2*N), [N, 0.1, K, E, vec(P)], (J,z0, p, n) -> nothing)
+        p = KuramotoParameters(; N)
+        ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2*N), p, (J, z0, p, n) -> nothing)
         diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
 
         # get the equilibrium state of the system after a long transient.
@@ -79,7 +86,7 @@ function continuation_problem(;thr = Inf, metric = Euclidean())
         psys = projected_integrator(ds, _proj_state, _complete; diffeq)
         yg = range(-17, 17; length = 31)
         grid = ntuple(x -> yg, dimension(psys))
-	mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
+	mapper = Attractors.AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
             diffeq, 
             show_progress = true, mx_chk_fnd_att = 100,
             safety_counter_max = Int(1e5),
@@ -91,7 +98,7 @@ function continuation_problem(;thr = Inf, metric = Euclidean())
         )
 
         continuation = RecurrencesSeedingContinuation(mapper; threshold = thr, metric = metric)
-        Kidx = 3
+        Kidx = :K
         Krange = range(0., 10; length = 20)
         fractions_curves, attractors_info = basins_fractions_continuation(
             continuation, Krange, Kidx, sampler;
@@ -101,6 +108,5 @@ function continuation_problem(;thr = Inf, metric = Euclidean())
 	return fractions_curves, attractors_info, Krange
 end
 
-f, a, K = continuation_problem(thr = 1.)
-
-save("fraction_test_continuation_kur.jld2", "f", f, "a", a, "K", K)
+# f, a, K = continuation_problem(thr = 1.)
+# save("fraction_test_continuation_kur_new_defs.jld2", "f", f, "K", K)
