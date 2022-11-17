@@ -1,9 +1,8 @@
 using DrWatson
 @quickactivate
-using ChaosTools, OrdinaryDiffEq
-using ChaosTools.DynamicalSystemsBase
+using Attractors, OrdinaryDiffEq
 using Random
-include(srcdir("basins_plotting.jl"))
+include(srcdir("vis", "basins_plotting.jl"))
 
 F = 6.886; G = 1.347; a = 0.255; b = 4.0
 ds = Systems.lorenz84(; F, G, a, b)
@@ -16,13 +15,14 @@ sampler, = statespace_sampler(Random.MersenneTwister(1234);
     min_bounds = minimum.(grid), max_bounds = maximum.(grid)
 )
 
-mapper = AttractorsViaRecurrencesSparse(ds, grid;
+mapper = AttractorsViaRecurrences(ds, grid;
     mx_chk_fnd_att = 1000,
-    mx_chk_loc_att = 50000,
+    mx_chk_loc_att = 1000,
     mx_chk_att = 2,
     mx_chk_lost = 1000,
-    safety_counter_max = 1e8,
-    Δt = 0.1,
+    mx_chk_safety = 1e7,
+    Δt = 0.2,
+    stop_at_Δt = true,
     diffeq,
 )
 

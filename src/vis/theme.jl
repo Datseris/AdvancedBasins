@@ -1,12 +1,17 @@
 using GLMakie
 import Downloads
 
+path = joinpath(@__DIR__, "plottheme.jl")
+# Set default colorscheme if you'd like, see `plottheme.jl`
+ENV["COLORSCHEME"] = "JuliaDynamics"
+
 try
     Downloads.download(
         "https://raw.githubusercontent.com/Datseris/plottheme/main/plottheme.jl",
-        joinpath(@__DIR__, "plottheme.jl")
+        path
     )
 catch
 end
-
-include("plottheme.jl")
+if isfile(path)
+    include(path)
+end

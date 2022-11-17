@@ -78,9 +78,15 @@ function fractions_to_cumulative(fractions_curves, prange)
 end
 
 function basins_fractions_plot!(ax, fractions_curves, prange;
-        add_legend = false
+        add_legend = true
     )
     ukeys, bands = fractions_to_cumulative(fractions_curves, prange)
+    colors = COLORS
+    # colors = if length(ukeys) ≤ length(COLORS)
+    #     COLORS
+    # else
+    #     shuffle!(categorical_colors(:tokyo, length(ukeys)))
+    # end
 
     for (j, k) in enumerate(ukeys)
         if j == 1
@@ -88,7 +94,7 @@ function basins_fractions_plot!(ax, fractions_curves, prange;
         else
             l, u = bands[j-1], bands[j]
         end
-        band!(ax, prange, l, u; color = Cycled(j), label = "$k")
+        band!(ax, prange, l, u; color = colors[j], label = "$k")
     end
     ylims!(ax, 0, 1); xlims!(ax, minimum(prange), maximum(prange))
     add_legend && axislegend(ax; position = :lt)

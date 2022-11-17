@@ -59,3 +59,49 @@ function cell_differentiation(N = 3, u0 = rand(N); α=4, β=20, n=1.5, Kd=1.0)
     ds = ContinuousDynamicalSystem(cell_differentiation_rule!, u0, p)
     return ds
 end
+
+# Network of (2nd order) Kuramoto oscillators,
+# from original MCBB paper.
+mutable struct KuramotoParameters{M}
+    N::Int
+    α::Float64
+    Δ::M
+    ΔT::M
+    P::Vector{Float64}
+    K::Float64
+    # Both of these are dummies
+    x::Vector{Float64}
+    y::Vector{Float64}
+end
+function KuramotoParameters(; N, K, α = 0.1, seed = 53867481290)
+    rng = Random.Xoshiro(seed)
+    g = random_regular_graph(N, 3; rng)
+    Δ = incidence_matrix(g, oriented=true)
+    P = [isodd(i) ? +1.0 : -1.0 for i = 1:N]
+    x = Δ' * zeros(N)
+    y = zeros(N)
+    ΔT = sparse(Matrix(Δ'))
+    return KuramotoParameters(N, α, Δ, ΔT, P, K, x, y)
+end
+using LinearAlgebra: mul!
+function second_order_kuramoto!(du, u, p, t)
+    (; N, α, K, Δ, ΔT, P, x, y) = p
+    φs = view(u, 1:N)
+    ωs = view(u, N+1:2N)
+    dφs = view(du, 1:N)
+    dωs = view(du, N+1:2N)
+    dφs .= ωs
+    mul!(x, ΔT, φs)
+    x .= sin.(x)
+    mul!(y, Δ, x)
+    y .*= K
+    # the full sine term is y now.
+    @. dωs = P - α*ωs - y
+    return nothing
+end
+function kuramoto_network_2ndorder(; N=10, K=6.0, kwargs...)
+    p = KuramotoParameters(; N, K)
+    dummyjac = (J, z0, p, n) -> nothing
+    ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2N), p, dummyjac)
+    return ds
+end
