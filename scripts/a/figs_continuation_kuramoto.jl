@@ -111,3 +111,8 @@ d = load("fraction_test_continuation_kur_mccb_5000_v2.jld2")
 f = d["f"]
 K = d["K"]
 plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_5000_v2.png")
+
+d = load("fraction_test_clust_att_kur_new_defs.jld2")
+f = d["f"]
+K = d["K"]
+plot_filled_curves(f, K,  "kur_clust_atts_pi_pi_1000_v2.png")
