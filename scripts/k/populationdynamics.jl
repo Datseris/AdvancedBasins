@@ -223,6 +223,10 @@ isextinct(attractors_info[1][1], 4)
 
 
 # ----------------------------- Step 4: Grouping ----------------------------- #
+"""
+Group attractors based on features from featurizer and then change their labels so that
+the grouped attractors have the same label.
+"""
 function match_by_grouping(groupingconfig, atts, featurizer; fs=nothing)
     features = [featurizer(A) for (k, A) in atts]
     labels = group_features(features, groupingconfig)
@@ -231,7 +235,12 @@ function match_by_grouping(groupingconfig, atts, featurizer; fs=nothing)
     return rmap
 end
 
-function sum_fractions_keys!(fs, rmap)
+"""
+Given a replacement map that is a dictionary mapping the old keys in `fs` to new keys,
+return the updated fractions `fs` that correspond to the sum of the values of `fs` with
+the same key.
+"""
+function sum_fractions_keys(fs, rmap)
     newkeys = unique(values(rmap))
     fssum = Dict(newkeys .=> 0.0)
     for oldkey in keys(rmap)
@@ -250,4 +259,4 @@ features_outside = [featurizer(A) for (k, A) in atts]
 rmap = match_by_grouping(groupingconfig, atts, featurizer; fs)
 atts
 rmap
-fs = sum_fractions_keys!(fs, rmap)
+fs = sum_fractions_keys(fs, rmap)
