@@ -2,8 +2,9 @@ using DrWatson
 @quickactivate
 using OrdinaryDiffEq:Vern9
 using DynamicalSystemsBase
-using Attractors
+using Attractors, Random
 using CairoMakie
+include("$(srcdir())/vis/basins_plotting.jl")
 
 monod(r, R, K) = r*R/(K+R)
 function μ!(μs, rs, Rs, Ks)
@@ -40,16 +41,6 @@ function competition!(du, u, p, t)
     nothing
 end
 
-# using BenchmarkTools
-# let
-#     p = CompetitionDynamics("1")
-#     N = size(p.Ks, 2)
-#     u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
-#     du = deepcopy(u0); u = deepcopy(u0);
-#     t = 0.0
-#     @btime competition!($du, $u, $p, $t)
-# end
-
 mutable struct CompetitionDynamics3
     rs :: Vector{Float64}
     ms :: Vector{Float64}
@@ -78,6 +69,19 @@ function CompetitionDynamics(fig="1")
             Ks = Ks[:, 1:5]
             cs = cs[:, 1:5]
         end
+    elseif fig == "2" || fig == "3"
+        Ks = [
+            0.20 0.05 1.00 0.05 1.20;
+            0.25 0.10 0.05 1.00 0.40;
+            0.15 0.95 0.35 0.10 0.05;
+        ]
+
+        cs = [
+            0.20 0.10 0.10 0.10 0.10;
+            0.10 0.20 0.10 0.10 0.20;
+            0.10 0.10 0.20 0.20 0.10;
+        ]
+
     else
         @error "nope"
     end
@@ -93,57 +97,6 @@ function CompetitionDynamics(fig="1")
     return CompetitionDynamics3(rs, ms, Ss, μs, Rcoups, Ks, cs, D)
 end
 
-p = CompetitionDynamics("1")
-
-N = size(p.Ks, 2)
-u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
-# N[2] = 0.1;
-ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
-
-T = 2000.0; Ttr = 0.0; Δt = 1.0;
-tr = trajectory(ds, T; Ttr, Δt); t=Ttr:Δt:T;
-plot_dynamics(p)
-# save("$(plotsdir())/populationdynamics-fig1.png", fig, px_per_unit=3)
-
-diffeq = (alg = Vern9(), maxiters=Inf);
-xg = range(0, 60,length = 300);
-grid = ntuple(x->xg, N+3);
-mapper = AttractorsViaRecurrences(ds, grid;
-        mx_chk_fnd_att = 1000,
-        mx_chk_loc_att = 500,
-        mx_chk_att = 100,
-        # Δt = 100.,
-        sparse = true,
-        diffeq,
-        stop_at_Δt=true,
-    );
-
-red_grid = Attractors.reduced_grid(grid, 2);
-basins, atts = basins_of_attraction(mapper, red_grid);
-
-fig, ax = plot_attractors(atts; idxs=[1,2,6])
-fig
-
-function verify_convergence_attractors(ds, atts)
-    for (k, att) in atts
-        u0 = att[1, :]
-        reinit!()
-        ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
-        T = 2000.0; Ttr = 0.0; Δt = 1.0;
-        tr = trajectory(ds, T; Ttr, Δt); t=Ttr:Δt:T;
-
-
-
-
-pidx = :D; ps = 0.2:0.05:0.3
-continuation = RecurrencesSeedingContinuation(mapper)
-fractions_curves, attractors_info = basins_fractions_continuation(
-    continuation, ps, pidx, sampler;
-    show_progress = false, samples_per_parameter = 20
-)
-#continuate across some parameter to check for some pops extinction
-fig 4a: unit 6 remains, others die off; so keep track of N[6] maybe (keep track when it is alive)
-
 function plot_attractors(atts; fig=nothing, ax=nothing, idxs=[1,2,3])
     if isnothing(fig) fig = Figure(res=(1000, 1000)) end
     if isnothing(ax) ax = Axis3(fig[1,1]) end
@@ -158,14 +111,143 @@ function plot_attractors(atts; fig=nothing, ax=nothing, idxs=[1,2,3])
 end
 
 
-using CairoMakie
 function plot_dynamics(p)
-    fig = Figure()
+    fig = Figure(resolution=(800, 800))
     ax = Axis(fig[1,1])
-    xlims!(1000, 2000)
-    for i=1:N lines!(ax, t, tr[:,i]) end
-    ax = Axis3(fig[2,1])
-    lines!(ax, tr[:,1], tr[:,2], tr[:,3])
+    # xlims!(1000, 2000)
+    for i=1:N lines!(ax, t, tr[:,i], label="$i") end
+    axislegend("Unit", position = :rt, orientation = :horizontal)
+    ax2 = Axis3(fig[2,1])
+    lines!(ax2, tr[:,1], tr[:,2], tr[:,3])
     fig
     return fig, t, tr, p
 end
+
+reduced_grid(grid, newlength) = map(g -> range(minimum(g), maximum(g); length = newlength), grid)
+
+
+figidx = "2"
+p = CompetitionDynamics(figidx)
+
+N = size(p.Ks, 2)
+u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
+ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
+int = integrator(ds, u0)
+
+# -------------------------- Step 1: replicate paper ------------------------- #
+T = 2000.0; Ttr = 0.0; Δt = 0.5;
+tr = trajectory(int, T; Ttr, Δt); t=Ttr:Δt:T;
+fig, ax = plot_dynamics(p)
+fig
+save("$(plotsdir())/populationdynamics-fig$figidx.png", fig, px_per_unit=3)
+
+
+# ------------- Step 2: Recurrences for a single parameter ------------- #
+diffeq = (alg = Vern9(), maxiters=Inf);
+xg = range(0, 60,length = 300);
+grid = ntuple(x->xg, N+3);
+ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
+mapper = AttractorsViaRecurrences(ds, grid;
+        # mx_chk_fnd_att = 1000,
+        # mx_chk_loc_att = 500,
+        # mx_chk_att = 100,
+        Δt= 1.0,
+        diffeq,
+        stop_at_Δt=true,
+    );
+
+#option 1
+redugrid = reduced_grid(grid, 2);
+basins, atts = basins_of_attraction(mapper, redugrid);
+
+#option 2
+basins = zeros(Int32, map(length, redugrid))
+I = CartesianIndices(basins)
+ics = Dataset([Attractors.generate_ic_on_grid(redugrid, i) for i in vec(I)])
+fs, labels, atts = basins_fractions(mapper, ics)
+
+fig, ax = plot_attractors(atts; idxs=[1,2,3])
+fig
+
+# have_converged = verify_convergence_attractors(ds, atts, 50)
+
+# ------------------------ Step 3: apply continuation ------------------------ #
+# using DynamicalSystems,
+using ProgressMeter
+pidx = :D; ps = 0.2:0.01:0.3;
+# pidx = :D; ps = 0.2:0.01:0.3;
+unitidx = 4
+isextinct(A, idx) = all(A[:, idx] .<= 1e-2)
+distance_extinction = function(A,B, idx)
+    A_extinct = isextinct(A,idx)
+    B_extinct = isextinct(B,idx)
+    return Int32(A_extinct && B_extinct)
+end
+
+ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
+mapper = AttractorsViaRecurrences(ds, grid;
+        Δt= 1.0,
+        diffeq,
+        stop_at_Δt=true,
+    );
+
+#default
+metric = Euclidean(); threshold = Inf; info_extraction(A) = A; methodname = "default"
+
+#custom
+metric = (A, B) -> distance_extinction(A, B, unitidx);
+threshold = Inf; methodname = "extinction"
+info_extraction(A) = isextinct(A, unitidx)
+
+continuation = RecurrencesSeedingContinuation(mapper; metric, threshold, info_extraction);
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = minimum.(grid), max_bounds = maximum.(grid)
+);
+fractions_curves, attractors_info = basins_fractions_continuation(
+    continuation, ps, pidx;
+    show_progress = true, samples_per_parameter = 100
+)
+
+fig, ax = basins_fractions_plot(fractions_curves, collect(ps), add_legend=true)
+ax.xlabel = "D"
+ax.ylabel = "fractions"
+vlines!(ax, 0.25, color=:red)
+fig
+save("$(plotsdir())/populationdynamics-fractionscontinuation-fig$figidx-metric_$(metric)-threshold-$(threshold).png", fig, px_per_unit=3)
+
+#find which attractor label corresponds to extinct X
+attractors_info
+fractions_curves
+attractors_info[1][4][:,4]
+isextinct(attractors_info[1][1], 4)
+
+
+# ----------------------------- Step 4: Grouping ----------------------------- #
+function match_by_grouping(groupingconfig, atts, featurizer; fs=nothing)
+    features = [featurizer(A) for (k, A) in atts]
+    labels = group_features(features, groupingconfig)
+    rmap = Dict(keys(atts) .=> labels)
+    swap_dict_keys!(atts, rmap)
+    return rmap
+end
+
+function sum_fractions_keys!(fs, rmap)
+    newkeys = unique(values(rmap))
+    fssum = Dict(newkeys .=> 0.0)
+    for oldkey in keys(rmap)
+        newkey = rmap[oldkey]
+        fssum[newkey] += fs[oldkey]
+    end
+    return fssum
+end
+
+groupingconfig = GroupViaClustering(; min_neighbors=1, optimal_radius_method=0.5) #note that minneighbors = 1 is crucial for grouping single attractors
+featurizer(A) = [Int32(isextinct(A, unitidx))]
+atts = deepcopy(attractors_info[6])
+fs = deepcopy(fractions_curves[6])
+
+features_outside = [featurizer(A) for (k, A) in atts]
+rmap = match_by_grouping(groupingconfig, atts, featurizer; fs)
+atts
+rmap
+fs = sum_fractions_keys!(fs, rmap)
