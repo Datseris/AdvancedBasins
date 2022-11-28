@@ -51,8 +51,8 @@ function compute_LM(di::Dict)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
     yg = range(-5, 5; length = 10001)
     grid = ntuple(x -> yg, dimension(ds))
-    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = .1,   
-        mx_chk_fnd_att = 300,
+    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = .01,   
+        mx_chk_fnd_att = 300, stop_at_Δt = true,
         mx_chk_loc_att = 100, safety_counter_max = Int(1e7), diffeq)
     u0(x,y) = [x, -0.0511, -0.0391, 0.0016, y, 0.126]
     y1r = range(-1, 1, length = res)
@@ -64,16 +64,16 @@ function compute_LM(di::Dict)
 end
 
 function continuation_LMD6()
-    Re_range = range(250,500, length = 50)
+    Re_range = range(290,420, length = 50)
     p = LMD6Parameters(; Re = 307.)
     ds = ContinuousDynamicalSystem(LMD6!, zeros(6), p, (J,z0, p, n) -> nothing)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
-    yg = range(-30, 30; length = 15001)
+    yg = range(-5, 5; length = 1501)
     grid = ntuple(x -> yg, 6)
-    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = .1,   
-        mx_chk_fnd_att = 300,
+    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = 1.,   
+        mx_chk_fnd_att = 4000, stop_at_Δt = true, store_once_per_cell = true,
         mx_chk_loc_att = 100, mx_chk_safety = Int(1e7), diffeq)
-    pidx = :Re; spp = 20000
+    pidx = :Re; spp = 4000
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(6).*(-1.), max_bounds = ones(6).*(1.))
 
     ## RECURENCE CONTINUATION
