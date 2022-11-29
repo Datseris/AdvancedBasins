@@ -5,11 +5,18 @@
 COLORSCHEMES = Dict(
     "JuliaDynamics" => [
         "#7143E0",
-        "#0A9A84",
         "#171A2F",
+        "#0A9A84",
         "#F30F0F",
         "#465F00",
         "#701B80",
+    ],
+    "Petrol" => [
+        "#00A9B5",
+        "#20254A",
+        "#86612A",
+        "#BD5DAA",
+        "#691105",
     ],
 )
 
@@ -46,25 +53,31 @@ default_theme = Makie.Theme(
     Figure = (
         resolution = (1000, 600),
     ),
+    figure_padding = 15,
     linewidth = 3.0,
     # Font and size stuff:
     fontsize = _FONTSIZE,
     Axis = (
         xlabelsize = _LABELSIZE,
         ylabelsize = _LABELSIZE,
+        palette = (
+            color = COLORSCHEME,
+            marker = MARKERS,
+            patchcolor = COLORSCHEME,
+        ),
     ),
-    palette = (
-        color = COLORSCHEME,
-        marker = MARKERS,
-        patchcolor = COLORSCHEME,
+    Axis3 = (
+        palette = (
+            color = COLORSCHEME,
+            patchcolor = COLORSCHEME,
+        ),
     ),
     # This command makes the cycle of color and marker
     # co-vary at the same time in plots that use markers
-    # cycle,
     ScatterLines = (cycle=cycle, markersize = 5),
     Scatter = (cycle=cycle,),
-    # Lines = (cycle=cycle,),
-    # Band = (cycle=:color,)
+    Lines = (cycle=:color,),
+    Band = (cycle=:color,),
     Label = (textsize = _FONTSIZE + 4,)
 )
 
@@ -74,7 +87,7 @@ set_theme!(default_theme)
 # Testing style (colorscheme)
 if false
     using Random
-    fig = Figure(resolution = (1500, 1000)) # show colors
+    fig = Figure(resolution = (1200, 800)) # show colors
     display(fig)
     ax6 = Axis(fig[2,3])
     ax5 = Axis(fig[2,2])
@@ -93,14 +106,13 @@ if false
         end
         return "gray"*num
     end
-    L = length(COLORS)
     barpos = Random.shuffle(1:4L)
     for (i, c) in enumerate(COLORS)
         chsv = convert(Makie.Colors.HSV, to_color(c))
         lines!(ax1, [0, 1], [0, 0] .+ i; color = c, linewidth)
         lines!(ax2, [0, 1], [0, 0] .+ i; color = graycolor(chsv.v), linewidth)
         lines!(ax3, [0, 1], [0, 0] .+ i; color = graycolor(chsv.s), linewidth)
-        x = 0:0.05:5π
+        local x = 0:0.05:5π
         lines!(ax4, x, rand(1:3) .* cos.(x .+ i/2) .+ rand(length(x))/5; color=c, linewidth = 4)
         barplot!(ax5, barpos[collect(1:4) .+ (i-1)*4], 0.5rand(4) .+ 0.5; width = 1, gap=0.1,color=c)
         scatterlines!(ax6, rand(3), rand(3); linewidth = 4, markersize = 30)
@@ -114,10 +126,27 @@ end
 Text = Union{Symbol, <: AbstractString}
 
 """
+    figuretitle!(fig, title; kwargs...)
+Add a title to a `Figure`, that looks the same as the title of an `Axis`.
+"""
+function figuretitle!(fig, title;
+        valign = :bottom, padding = (0, 0, 0, 0),
+        font = "TeX Gyre Heros Bold", # same font as Axis titles
+        kwargs...,
+    )
+    Label(fig[0, :], title;
+        tellheight = true, tellwidth = false, valign, padding, font, kwargs...
+    )
+    return
+end
+
+"""
     subplotgrid(m, n; sharex = false, sharey = false, kwargs...) -> fig, axs
 Create a grid of `m` rows and `n` columns axes in a new figure and return the figure and the
 matrix of axis. Optionally make every row share the y axis, and/or every column
 to share the x axis. In this case, tick labels are hidden from the shared axes.
+
+See also `subplotgrid!`.
 """
 function subplotgrid(m, n;
         sharex = false, sharey = false, titles = nothing,
@@ -157,12 +186,7 @@ function subplotgrid(m, n;
             axs[i, 1].ylabel = ylabels isa Text ? ylabels : ylabels[i]
         end
     end
-    if !isnothing(title)
-        Label(fig[0, :], title, valign = :bottom,
-            padding = (0, 0, 5, 0), tellheight = true, tellwidth = false,
-            font = "TeX Gyre Heros Bold", # same font as Axis titles
-        )
-    end
+    !isnothing(title) && figuretitle!(fig, title)
     return fig, axs
 end
 

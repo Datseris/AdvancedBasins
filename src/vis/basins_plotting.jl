@@ -50,7 +50,7 @@ function animate_attractors_continuation(
 
 end
 
-function fractions_to_cumulative(fractions_curves)
+function fractions_to_cumulative(fractions_curves, prange)
     ukeys = unique_keys(fractions_curves)
     bands = [zeros(length(prange)) for k in ukeys]
     for i in eachindex(fractions_curves)
@@ -66,9 +66,9 @@ function fractions_to_cumulative(fractions_curves)
 end
 
 function basins_fractions_plot!(ax, fractions_curves, prange;
-        add_legend = false
+        add_legend = false, legend_labels = nothing, colors_bands = nothing, kwargs...
     )
-    ukeys, bands = fractions_to_cumulative(fractions_curves)
+    ukeys, bands = fractions_to_cumulative(fractions_curves, prange)
 
     for (j, k) in enumerate(ukeys)
         if j == 1
@@ -76,16 +76,18 @@ function basins_fractions_plot!(ax, fractions_curves, prange;
         else
             l, u = bands[j-1], bands[j]
         end
-        band!(ax, prange, l, u; color = Cycled(j), label = "$k")
+        legendlabel = legend_labels isa Vector ? legend_labels[k] : "$k"
+        color_band = colors_bands isa Dict ? colors_bands[k] : Cycled(j)
+        band!(ax, prange, l, u; color = color_band, label = legendlabel)
     end
     ylims!(ax, 0, 1); xlims!(ax, minimum(prange), maximum(prange))
     add_legend && axislegend(ax; position = :lt)
     return
 end
 
-function basins_fractions_plot(fractions_curves, prange; kwargs...)
-    fig = Figure()
-    ax = Axis(fig[1,1])
+function basins_fractions_plot(fractions_curves, prange; idxrow = 1, fig=nothing, kwargs...)
+    if isnothing(fig) fig = Figure(resolution=(800, 800)) end
+    ax = Axis(fig[idxrow, 1])
     basins_fractions_plot!(ax, fractions_curves, prange; kwargs...)
-    return fig
+    return fig, ax
 end
