@@ -4,6 +4,7 @@ using OrdinaryDiffEq:Vern9
 using DynamicalSystemsBase
 using Attractors, Random
 using CairoMakie
+using Colors
 include("$(srcdir())/vis/basins_plotting.jl")
 
 monod(r, R, K) = r*R/(K+R)
@@ -39,6 +40,17 @@ function competition!(du, u, p, t)
     @. dNs = Ns * (μs - ms)
     @. dRs = D*(Ss - Rs) - Rcoups
     nothing
+end
+
+
+function competition(u, p, t)
+    @unpack rs, Ks, ms, Ss, cs, μs, Rcoups, D = p
+    n = size(Ks, 2)
+    Ns = view(u, 1:n)
+    Rs = view(u, n+1:n+3)
+    μ!(μs, rs, Rs, Ks)
+    Rcoup!(Rcoups, Ns, Rs, μs, cs)
+    return SVector{8}([Ns .* (μs .- ms); D .* (Ss .- Rs) .- Rcoups ])
 end
 
 mutable struct CompetitionDynamics3
@@ -132,7 +144,8 @@ p = CompetitionDynamics(figidx)
 N = size(p.Ks, 2)
 u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
 ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
-int = integrator(ds, u0)
+diffeq = (alg = Vern9(), maxiters=Inf);
+int = integrator(ds, u0; diffeq)
 
 # -------------------------- Step 1: replicate paper ------------------------- #
 T = 2000.0; Ttr = 0.0; Δt = 0.5;
@@ -143,14 +156,12 @@ save("$(plotsdir())/populationdynamics-fig$figidx.png", fig, px_per_unit=3)
 
 
 # ------------- Step 2: Recurrences for a single parameter ------------- #
-diffeq = (alg = Vern9(), maxiters=Inf);
 xg = range(0, 60,length = 300);
 grid = ntuple(x->xg, N+3);
+p.D = 0.25
 ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
 mapper = AttractorsViaRecurrences(ds, grid;
-        # mx_chk_fnd_att = 1000,
-        # mx_chk_loc_att = 500,
-        # mx_chk_att = 100,
+        mx_chk_fnd_att = 9,
         Δt= 1.0,
         diffeq,
         stop_at_Δt=true,
@@ -159,67 +170,120 @@ mapper = AttractorsViaRecurrences(ds, grid;
 #option 1
 redugrid = reduced_grid(grid, 2);
 basins, atts = basins_of_attraction(mapper, redugrid);
+basins_2d = basins[:, :, 1, 1, 1, 1, 1, 1]
+heatmap(basins_2d)
 
 #option 2
-basins = zeros(Int32, map(length, redugrid))
-I = CartesianIndices(basins)
-ics = Dataset([Attractors.generate_ic_on_grid(redugrid, i) for i in vec(I)])
+basins = zeros(Int32, map(length, redugrid));
+I = CartesianIndices(basins);
+ics = Dataset([Attractors.generate_ic_on_grid(redugrid, i) for i in vec(I)]);
+ics = ics[1:100, :]
 fs, labels, atts = basins_fractions(mapper, ics)
+@show fs;
+@show atts;
+
+setdiff(keys(atts), keys(fs))
+
 
 fig, ax = plot_attractors(atts; idxs=[1,2,3])
 fig
 
+#plot basins
+xg_plot = yg_plot = range(0, 60, length = 50);
+grid_2d = (xg_plot, yg_plot, 1.:1, 1.:1, 1.:1, 1.:1, 1.:1, 1.:1)
+basins, atts = basins_of_attraction(mapper, grid_2d);
+basins_2d = basins[:, :, 1, 1, 1, 1, 1, 1]
+fig = Figure()
+ax = Axis(fig[1,1])
+heatmap!(ax, basins_2d)
+fig
+save("$(plotsdir())/populationdynamics-basins-D_$(p.D).png", fig, px_per_unit=3)
+
 # have_converged = verify_convergence_attractors(ds, atts, 50)
 
 # ------------------------ Step 3: apply continuation ------------------------ #
-# using DynamicalSystems,
-using ProgressMeter
-pidx = :D; ps = 0.2:0.01:0.3;
-# pidx = :D; ps = 0.2:0.01:0.3;
-unitidx = 4
-isextinct(A, idx) = all(A[:, idx] .<= 1e-2)
-distance_extinction = function(A,B, idx)
-    A_extinct = isextinct(A,idx)
-    B_extinct = isextinct(B,idx)
-    return Int32(A_extinct && B_extinct)
+
+function _default_seeding_process_deterministic(attractor::AbstractDataset)
+    max_possible_seeds = 10
+    seeds = round(Int, log(10, length(attractor)))
+    seeds = clamp(seeds, 1, max_possible_seeds)
+    return (attractor.data[i] for i in 1:seeds)
 end
 
-ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
-mapper = AttractorsViaRecurrences(ds, grid;
-        Δt= 1.0,
-        diffeq,
-        stop_at_Δt=true,
+function _default_seeding_process_fixedrng(attractor::AbstractDataset; rng=MersenneTwister(1))
+    max_possible_seeds = 10
+    seeds = round(Int, log(10, length(attractor)))
+    seeds = clamp(seeds, 1, max_possible_seeds)
+    return (rand(rng, attractor.data) for _ in 1:seeds)
+end
+
+function get_metric(unitidx=nothing)
+    if isnothing(unitidx)
+    return "euclidean", Euclidean();
+    else
+        isextinct(A, idx) = all(A[:, idx] .<= 1e-2)
+        distance_extinction = function(A,B, idx)
+            A_extinct = isextinct(A,idx)
+            B_extinct = isextinct(B,idx)
+            return (A_extinct && B_extinct) ? 0 : 1
+        end
+        return "distance_extinction", (A, B) -> distance_extinction(A, B, unitidx);
+    end
+    nothing
+end
+
+
+pidx = :D; ps = 0.2:0.01:0.3;
+xg = range(0, 60,length = 300); grid = ntuple(x->xg, N+3);
+unitidxs = [3]
+samples_per_parameter = 50
+for unitidx in unitidxs
+    info_extraction = A -> isextinct(A, unitidx)
+    # info_extraction = identity
+    metricname, metric = get_metric(unitidx)
+    ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing);
+    mapper = AttractorsViaRecurrences(ds, grid;
+            Δt= 1.0,
+            mx_chk_fnd_att = 3,
+            diffeq,
+        );
+    continuation = RecurrencesSeedingContinuation(mapper; seeds_from_attractor=_default_seeding_process_deterministic, metric, threshold, info_extraction);
+    sampler, = statespace_sampler(Random.MersenneTwister(1234);
+        min_bounds = minimum.(grid), max_bounds = maximum.(grid)
+    );
+    fractions_curves, attractors_info = basins_fractions_continuation(
+        continuation, ps, pidx, sampler;
+        show_progress = true, samples_per_parameter
     );
 
-#default
-metric = Euclidean(); threshold = Inf; info_extraction(A) = A; methodname = "default"
+    #plot details
+    ukeys = unique_keys(attractors_info)
+    label_extincts = map(atts->[k for (k,v) in atts if v == 1], attractors_info); label_extincts = unique(vcat(label_extincts...))
+    label_surviving = [key for key in ukeys if key ∉ label_extincts]
+    legend_labels = [label in label_extincts ? "extinct" : "surviving" for label in unique_keys(attractors_info)]
+    colors_surviving =  collect(range(colorant"darkolivegreen2", stop=colorant"green", length=length(unique_keys(attractors_info))-length(label_extincts)))
+    colors_extinct   = length(label_extincts) == 1 ? ["red"] : collect(range(colorant"red", stop=colorant"red4", length=length(label_extincts)))
+    colors_bands = [colorant"white" for _ in unique_keys(attractors_info)]
+    colors_bands = merge(Dict(label_surviving .=> colors_surviving), Dict(label_extincts .=> colors_extinct))
+    #plot
+    fig, ax = basins_fractions_plot(fractions_curves, collect(ps); add_legend=true, legend_labels, colors_bands);
+    ax.xlabel = "D";
+    ax.ylabel = "fractions";
+    vlines!(ax, 0.25, color=:black);
+    save("$(plotsdir())/populationdynamics-fractionscontinuation-fig$figidx-method_$methodname-unitidx_$(unitidx)-samples_$(samples_per_parameter).png", fig, px_per_unit=3)
+    fig
+end
 
-#custom
-metric = (A, B) -> distance_extinction(A, B, unitidx);
-threshold = Inf; methodname = "extinction"
-info_extraction(A) = isextinct(A, unitidx)
+    #for tests
+    # fstotal_extinct = zeros(Float64, length(attractors_info))
+    # for (i, (atts, fss)) in enumerate(zip(attractors_info, fractions_curves))
+    #     fstotal_extinct[i] =  sum([v for (k,v) in fss if k in label_extincts])
+    # end
+    # push!(fstotals, fs_total_extinct)
+# When changing the metric, the labels (and maximum label) can differ, that makes sense. But the total fraction (grouping atts with the same label) for each type should be the same!
+# @test fstotals[1] == fstotals[2]
+#could also implement test showing that att_info does not affect the results
 
-continuation = RecurrencesSeedingContinuation(mapper; metric, threshold, info_extraction);
-sampler, = statespace_sampler(Random.MersenneTwister(1234);
-    min_bounds = minimum.(grid), max_bounds = maximum.(grid)
-);
-fractions_curves, attractors_info = basins_fractions_continuation(
-    continuation, ps, pidx;
-    show_progress = true, samples_per_parameter = 100
-)
-
-fig, ax = basins_fractions_plot(fractions_curves, collect(ps), add_legend=true)
-ax.xlabel = "D"
-ax.ylabel = "fractions"
-vlines!(ax, 0.25, color=:red)
-fig
-save("$(plotsdir())/populationdynamics-fractionscontinuation-fig$figidx-metric_$(metric)-threshold-$(threshold).png", fig, px_per_unit=3)
-
-#find which attractor label corresponds to extinct X
-attractors_info
-fractions_curves
-attractors_info[1][4][:,4]
-isextinct(attractors_info[1][1], 4)
 
 
 # ----------------------------- Step 4: Grouping ----------------------------- #
@@ -227,7 +291,7 @@ isextinct(attractors_info[1][1], 4)
 Group attractors based on features from featurizer and then change their labels so that
 the grouped attractors have the same label.
 """
-function match_by_grouping(groupingconfig, atts, featurizer; fs=nothing)
+function group_and_match(groupingconfig, atts, featurizer; fs=nothing)
     features = [featurizer(A) for (k, A) in atts]
     labels = group_features(features, groupingconfig)
     rmap = Dict(keys(atts) .=> labels)
@@ -243,20 +307,49 @@ the same key.
 function sum_fractions_keys(fs, rmap)
     newkeys = unique(values(rmap))
     fssum = Dict(newkeys .=> 0.0)
-    for oldkey in keys(rmap)
+    for oldkey in keys(fs)
         newkey = rmap[oldkey]
         fssum[newkey] += fs[oldkey]
     end
     return fssum
 end
 
+unitidx = 3
+info_extraction = A -> isextinct(A, unitidx)
+# info_extraction = identity
+metricname, metric = get_metric(unitidx)
+ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing);
+mapper = AttractorsViaRecurrences(ds, grid;
+        Δt= 1.0,
+        mx_chk_fnd_att = 3,
+        diffeq,
+    );
+continuation = RecurrencesSeedingContinuation(mapper; seeds_from_attractor=_default_seeding_process_deterministic, metric, threshold, info_extraction);
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = minimum.(grid), max_bounds = maximum.(grid)
+);
+fractions_curves, attractors_info = basins_fractions_continuation(
+    continuation, ps, pidx, sampler;
+    show_progress = true, samples_per_parameter
+);
+
+
+
+featurizer(A) = [Int32(A)]
+
 groupingconfig = GroupViaClustering(; min_neighbors=1, optimal_radius_method=0.5) #note that minneighbors = 1 is crucial for grouping single attractors
-featurizer(A) = [Int32(isextinct(A, unitidx))]
-atts = deepcopy(attractors_info[6])
-fs = deepcopy(fractions_curves[6])
+featurizer(A) = [Int32(isextinct(Float64.(A), unitidx))]
+idx = 8
+atts = deepcopy(attractors_info[idx])
+fs = deepcopy(fractions_curves[idx])
+@show ps[idx];
+@show atts;
+@show fs;
+_labels = [9,14]
+sum([fs[label] for label in _labels])
 
 features_outside = [featurizer(A) for (k, A) in atts]
-rmap = match_by_grouping(groupingconfig, atts, featurizer; fs)
-atts
+rmap = group_and_match(groupingconfig, atts, featurizer; fs)
+@show atts;
 rmap
 fs = sum_fractions_keys(fs, rmap)
