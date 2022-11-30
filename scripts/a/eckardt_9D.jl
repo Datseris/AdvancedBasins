@@ -3,10 +3,11 @@ using DrWatson
 using LaTeXStrings
 using Attractors
 # using DynamicalSystems
-using OrdinaryDiffEq:Vern9
+using OrdinaryDiffEq
 using CairoMakie
 using Random
 using ProgressMeter
+using JLD2
 
 # A low-dimensional model for turbulent shear flows
 # Jeff Moehlis , Holger Faisst and Bruno Eckhardt
@@ -63,16 +64,16 @@ end
 
 
 function continuation_E9D()
-    Re_range = range(300,500, length = 50)
+    Re_range = range(320,380, length = 10)
     p = E9DParameters(; Re = 200.)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
-    yg = range(-15, 15; length = 10001)
+    yg = range(-15, 15; length = 4001)
     grid = ntuple(x -> yg, 9)
-    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = .01,   
-        mx_chk_fnd_att = 2000, stop_at_Δt = false, store_once_per_cell = true,
-        mx_chk_loc_att = 100, mx_chk_safety = Int(1e7), diffeq, show_progress = true)
-    pidx = :Re; spp = 1000
+    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = .1,   
+        mx_chk_fnd_att = 10000, stop_at_Δt = true, store_once_per_cell = true,
+        mx_chk_loc_att = 10000, mx_chk_safety = Int(1e7), diffeq, show_progress = true)
+    pidx = :Re; spp = 100
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 
     ## RECURENCE CONTINUATION
@@ -148,3 +149,4 @@ end
 
 f,a,r = continuation_E9D()
 plot_filled_curves(f,r,"tst.png")
+save("eckhardt_cont2.jld2","f",f,"a",a,"r",r)
