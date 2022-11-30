@@ -42,18 +42,7 @@ function competition!(du, u, p, t)
     nothing
 end
 
-
-function competition(u, p, t)
-    @unpack rs, Ks, ms, Ss, cs, μs, Rcoups, D = p
-    n = size(Ks, 2)
-    Ns = view(u, 1:n)
-    Rs = view(u, n+1:n+3)
-    μ!(μs, rs, Rs, Ks)
-    Rcoup!(Rcoups, Ns, Rs, μs, cs)
-    return SVector{8}([Ns .* (μs .- ms); D .* (Ss .- Rs) .- Rcoups ])
-end
-
-mutable struct CompetitionDynamics3
+mutable struct CompetitionDynamics
     rs :: Vector{Float64}
     ms :: Vector{Float64}
     Ss :: Vector{Float64}
@@ -106,7 +95,7 @@ function CompetitionDynamics(fig="1")
     Ss = [10.0 for j=1:3]
     μs = zeros(Float64, N)
     Rcoups = zeros(Float64, 3)
-    return CompetitionDynamics3(rs, ms, Ss, μs, Rcoups, Ks, cs, D)
+    return CompetitionDynamics(rs, ms, Ss, μs, Rcoups, Ks, cs, D)
 end
 
 function plot_attractors(atts; fig=nothing, ax=nothing, idxs=[1,2,3])
@@ -219,30 +208,31 @@ grid = ntuple(x->xg, N+3);
 p.D = 0.25
 ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
 mapper = AttractorsViaRecurrences(ds, grid;
-        mx_chk_fnd_att = 9,
+        # mx_chk_fnd_att = 9, #values at 9+ dont have the attractor-inattractors-but-not-in-fs problem
+        mx_chk_fnd_att = 3, #with the problem
         Δt= 1.0,
         diffeq,
         stop_at_Δt=true,
     );
 
-#option 1
 redugrid = reduced_grid(grid, 2);
-basins, atts = basins_of_attraction(mapper, redugrid);
-basins_2d = basins[:, :, 1, 1, 1, 1, 1, 1]
-heatmap(basins_2d)
+#option 1
+# basins, atts = basins_of_attraction(mapper, redugrid);
+# basins_2d = basins[:, :, 1, 1, 1, 1, 1, 1]
+# heatmap(basins_2d)
 
 #option 2
 basins = zeros(Int32, map(length, redugrid));
 I = CartesianIndices(basins);
 ics = Dataset([Attractors.generate_ic_on_grid(redugrid, i) for i in vec(I)]);
-ics = ics[1:100, :]
-fs, labels, atts = basins_fractions(mapper, ics)
+ics = ics[1:100, :];
+fs, labels, atts = basins_fractions(mapper, ics; show_progress=false)
 @show fs;
 @show atts;
+setdiff(keys(atts), keys(fs)) #reveals the problem
 
-setdiff(keys(atts), keys(fs))
 
-
+#plot attractors
 fig, ax = plot_attractors(atts; idxs=[1,2,3])
 fig
 
@@ -259,7 +249,7 @@ save("$(plotsdir())/populationdynamics-basins-D_$(p.D).png", fig, px_per_unit=3)
 
 # have_converged = verify_convergence_attractors(ds, atts, 50)
 
-# ------------------------ Step 3: apply continuation ------------------------ #
+# ------------------------ Step 3: Continuation with matching and grouping ------------------------ #
 
 function _default_seeding_process_deterministic(attractor::AbstractDataset)
     max_possible_seeds = 10
