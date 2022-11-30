@@ -64,20 +64,23 @@ end
 
 
 function continuation_E9D()
-    Re_range = range(320,380, length = 10)
-    p = E9DParameters(; Re = 200.)
+    Re_range = range(280,480, length = 60)
+    p = E9DParameters(; Re = 350.)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
-    yg = range(-15, 15; length = 4001)
-    grid = ntuple(x -> yg, 9)
-    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = .1,   
-        mx_chk_fnd_att = 10000, stop_at_Δt = true, store_once_per_cell = true,
-        mx_chk_loc_att = 10000, mx_chk_safety = Int(1e7), diffeq, show_progress = true)
-    pidx = :Re; spp = 100
+    _complete(y) = (length(y) == 2) ? zeros(9) : y; 
+    _proj_state(y) = [y[1], y[5]]
+    psys = projected_integrator(ds, _proj_state, _complete; diffeq)
+    yg = range(-5, 5; length = 10001)
+    grid = ntuple(x -> yg, 2)
+    mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
+        mx_chk_fnd_att = 10000, stop_at_Δt = false, store_once_per_cell = true,
+        mx_chk_loc_att = 10000, mx_chk_safety = Int(1e7), show_progress = true, mx_chk_att = 30)
+    pidx = :Re; spp = 5000
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 
     ## RECURENCE CONTINUATION
-    continuation = RecurrencesSeedingContinuation(mapper; threshold = 0.2)
+    continuation = RecurrencesSeedingContinuation(mapper; threshold = 0.1)
     fs, att = basins_fractions_continuation(
             continuation, Re_range, pidx, sampler;
             show_progress = true, samples_per_parameter = spp
@@ -149,4 +152,4 @@ end
 
 f,a,r = continuation_E9D()
 plot_filled_curves(f,r,"tst.png")
-save("eckhardt_cont2.jld2","f",f,"a",a,"r",r)
+save("eckhardt_cont3.jld2","f",f,"a",a,"r",r)
