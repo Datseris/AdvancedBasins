@@ -63,17 +63,17 @@ function E9D!(du, u, p, t)
 end
 
 function continuation_E9D()
-    Re_range = range(300,450, length = 10)
-    p = E9DParameters(; Re = 350.)
+    Re_range = range(300,450, length = 20)
+    p = E9DParameters(; Re = 337.)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
-    yg = range(-2, 2; length = 10001)
+    yg = range(-2, 2; length = 1001)
     grid = ntuple(x -> yg, 9)
     mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = 1.,   
         mx_chk_fnd_att = 1000, stop_at_Δt = true, store_once_per_cell = true,
         mx_chk_loc_att = 1000, mx_chk_safety = Int(1e7), show_progress = true,
-        mx_chk_att = 10)
-    pidx = :Re; spp = 500
+        mx_chk_att = 10, diffeq)
+    pidx = :Re; spp = 5000
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 
     ## RECURENCE CONTINUATION
@@ -86,7 +86,7 @@ function continuation_E9D()
 end
 
 function continuation_projected_E9D()
-    Re_range = range(280,480, length = 60)
+    Re_range = range(280,480, length = 20)
     p = E9DParameters(; Re = 350.)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
@@ -149,5 +149,5 @@ end
 
 f,a,r = continuation_E9D()
 save("eckhardt_cont_full.jld2","f",f,"a",a,"r",r)
-# @load "eckhardt_cont3.jld2"
-plot_filled_curves(f,r,"continuation_eckhardt_9D.png")
+# @load "eckhardt_cont_projected.jld2"
+plot_filled_curves(f,r,"continuation_eckhardt_9D_full.png")

@@ -91,28 +91,46 @@ end
 #
 # 
 # Clustering with Threshold Inf (Euclidean)  and samples taken from uniform dist [-π,π].
-d = load("fraction_test_continuation_kur.jld2")
+# d = load("fraction_test_continuation_kur.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K,  "kur_continuation_recurrence_pi_pi.png")
+
+# d = load("fraction_test_continuation_kur_mccb_8000.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_8000.png")
+
+
+# d = load("fraction_test_continuation_kur_new_defs.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K,  "kur_continuation_recurrence_pi_pi_new_def.png")
+
+# d = load("fraction_test_continuation_kur_mccb_5000_v2.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_5000_v2.png")
+
+# d = load("fraction_test_clust_att_kur_new_defs.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K,  "kur_clust_atts_pi_pi_1000_v2.png")
+
+
+
+
+d = load("fractions_clust_att_kur.jld2")
 f = d["f"]
 K = d["K"]
-plot_filled_curves(f, K,  "kur_continuation_recurrence_pi_pi.png")
+plot_filled_curves(f, K,  "cont_kur_clust_att.png")
 
-d = load("fraction_test_continuation_kur_mccb_8000.jld2")
+d = load("fractions_cont_mccb_kur.jld2")
 f = d["f"]
 K = d["K"]
-plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_8000.png")
+plot_filled_curves(f, K, "cont_kur_mccb.png")
 
-
-d = load("fraction_test_continuation_kur_new_defs.jld2")
+d = load("fractions_cont_rec_kur.jld2")
 f = d["f"]
 K = d["K"]
-plot_filled_curves(f, K,  "kur_continuation_recurrence_pi_pi_new_def.png")
-
-d = load("fraction_test_continuation_kur_mccb_5000_v2.jld2")
-f = d["f"]
-K = d["K"]
-plot_filled_curves(f, K,  "kur_continuation_mcbb_pi_pi_5000_v2.png")
-
-d = load("fraction_test_clust_att_kur_new_defs.jld2")
-f = d["f"]
-K = d["K"]
-plot_filled_curves(f, K,  "kur_clust_atts_pi_pi_1000_v2.png")
+plot_filled_curves(f, K, "cont_kur_rec.png")
