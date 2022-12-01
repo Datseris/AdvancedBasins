@@ -62,8 +62,30 @@ function E9D!(du, u, p, t)
     du[9] = -u[9]*k[9]/Re + σ[31]*u[2]*u[3] + σ[32]*u[6]*u[8] 
 end
 
-
 function continuation_E9D()
+    Re_range = range(300,450, length = 10)
+    p = E9DParameters(; Re = 350.)
+    ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
+    diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
+    yg = range(-2, 2; length = 10001)
+    grid = ntuple(x -> yg, 9)
+    mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = 1.,   
+        mx_chk_fnd_att = 1000, stop_at_Δt = true, store_once_per_cell = true,
+        mx_chk_loc_att = 1000, mx_chk_safety = Int(1e7), show_progress = true,
+        mx_chk_att = 10)
+    pidx = :Re; spp = 500
+    sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
+
+    ## RECURENCE CONTINUATION
+    continuation = RecurrencesSeedingContinuation(mapper; threshold = 0.5)
+    fs, att = basins_fractions_continuation(
+            continuation, Re_range, pidx, sampler;
+            show_progress = true, samples_per_parameter = spp
+            )
+    return fs, att, Re_range
+end
+
+function continuation_projected_E9D()
     Re_range = range(280,480, length = 60)
     p = E9DParameters(; Re = 350.)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
@@ -89,37 +111,9 @@ function continuation_E9D()
 end
 
 function plot_filled_curves(fractions, prms, figurename)
-    ff = deepcopy(fractions)
-# We rearrange the fractions and we sweep under the carpet the attractors with 
-# less the 5% of basin fraction. They are merged under the label -1
-    for (n,e) in enumerate(fractions)
-        vh = Dict();
-        d = sort(e; byvalue = true)
-        v = collect(values(d))
-        k = collect(keys(d))
-        ind = findall(v .> 0.05)
-        for i in ind; push!(vh, k[i] => v[i]); end        
-        ind = findall(v .<= 0.05)
-        if length(ind) > 0 
-            try 
-                if vh[-1] > 0.05
-                    vh[-1] += sum(v[ind])
-                else 
-                    vh[-1] = sum(v[ind])
-                end
-            catch 
-                push!(vh, -1 => sum(v[ind]))
-            end
-        end
-        # push!(ff, vh)
-        ff[n] = vh
-    end
-    fractions_curves = ff
-
+    fractions_curves = fractions
     ukeys = Attractors.unique_keys(fractions_curves)
-    # ps = 1:length(fractions_curves)
     ps = prms
-
     bands = [zeros(length(ps)) for k in ukeys]
     for i in eachindex(fractions_curves)
         for (j, k) in enumerate(ukeys)
@@ -132,7 +126,10 @@ function plot_filled_curves(fractions, prms, figurename)
     end
 
     fig = Figure(resolution = (600, 500))
-    ax = Axis(fig[1,1])
+    ax = Axis(fig[1,1], ylabel = "Basin Fractions", xlabel = "Re", yticklabelsize = 30,
+            xticklabelsize = 30, 
+            ylabelsize = 30, 
+            xlabelsize = 30)
     for (j, k) in enumerate(ukeys)
         if j == 1
             l, u = 0, bands[j]
@@ -151,5 +148,6 @@ function plot_filled_curves(fractions, prms, figurename)
 end
 
 f,a,r = continuation_E9D()
-plot_filled_curves(f,r,"tst.png")
-save("eckhardt_cont3.jld2","f",f,"a",a,"r",r)
+save("eckhardt_cont_full.jld2","f",f,"a",a,"r",r)
+# @load "eckhardt_cont3.jld2"
+plot_filled_curves(f,r,"continuation_eckhardt_9D.png")
