@@ -1,7 +1,6 @@
 # This file defines convenience functions for plotting basins fractions
 include("theme.jl")
 
-
 function animate_attractors_continuation(
         ds, attractors_info, prange, pidx;
         savename = "test.mp4", access = [1,2],
@@ -50,9 +49,22 @@ function animate_attractors_continuation(
 
 end
 
-function fractions_to_cumulative(fractions_curves)
+function plot_attractors(attractors::Dict;  access = [1,2], markersize = 12)
+    fig = Figure()
+    ax = Axis(fig[1,1])
+    ukeys = keys(attractors)
+    colors = Dict(k => (to_color(COLORS[i]), 0.75) for (i, k) in enumerate(ukeys))
+    for k in ukeys
+        scatter!(ax, vec(attractors[k][:, access]); color = colors[k],
+        label = "$k", markersize = markersize + rand(-2:4))
+    end
+    axislegend(ax)
+    return fig
+end
+
+function fractions_to_cumulative(fractions_curves, prange)
     ukeys = unique_keys(fractions_curves)
-    bands = [zeros(length(prange)) for k in ukeys]
+    bands = [zeros(length(prange)) for _ in ukeys]
     for i in eachindex(fractions_curves)
         for (j, k) in enumerate(ukeys)
             bands[j][i] = get(fractions_curves[i], k, 0)
@@ -66,9 +78,15 @@ function fractions_to_cumulative(fractions_curves)
 end
 
 function basins_fractions_plot!(ax, fractions_curves, prange;
-        add_legend = false
+        add_legend = true
     )
-    ukeys, bands = fractions_to_cumulative(fractions_curves)
+    ukeys, bands = fractions_to_cumulative(fractions_curves, prange)
+    colors = COLORS
+    # colors = if length(ukeys) ≤ length(COLORS)
+    #     COLORS
+    # else
+    #     shuffle!(categorical_colors(:tokyo, length(ukeys)))
+    # end
 
     for (j, k) in enumerate(ukeys)
         if j == 1
@@ -76,7 +94,7 @@ function basins_fractions_plot!(ax, fractions_curves, prange;
         else
             l, u = bands[j-1], bands[j]
         end
-        band!(ax, prange, l, u; color = Cycled(j), label = "$k")
+        band!(ax, prange, l, u; color = colors[j], label = "$k")
     end
     ylims!(ax, 0, 1); xlims!(ax, minimum(prange), maximum(prange))
     add_legend && axislegend(ax; position = :lt)

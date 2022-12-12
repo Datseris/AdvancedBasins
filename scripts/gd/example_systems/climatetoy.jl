@@ -55,8 +55,8 @@ pname = "S"
 mapper = AttractorsViaRecurrencesSparse(pinteg, grid;
     Ttr = 100,
     Δt = 1.0,
-    mx_chk_fnd_att = 20,
-    mx_chk_loc_att = 20,
+    mx_chk_fnd_att = 300,
+    mx_chk_loc_att = 1000,
     safety_counter_max = 1e8,
     diffeq,
 )
@@ -69,9 +69,12 @@ sampler, = statespace_sampler(Random.MersenneTwister(1234);
 
 
 # %% Normal mapping via `basins_fractions`
-S = 18.0
+S = 6.82
+
 set_parameter!(ds, 1, S)
-fracs = basins_fractions(mapper, sampler; N = 100)
+fracs = basins_fractions(mapper, sampler; N = 1000)
+
+attractors = mapper.bsn_nfo.attractors
 
 
 # %% Continutation
