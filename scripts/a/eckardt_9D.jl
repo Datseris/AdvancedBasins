@@ -69,10 +69,10 @@ function continuation_E9D(Re_range)
     yg = range(-2, 2; length = 1001)
     grid = ntuple(x -> yg, 9)
     mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = 1.,   
-        mx_chk_fnd_att = 1000, stop_at_Δt = true, store_once_per_cell = true,
-        mx_chk_loc_att = 1000, mx_chk_safety = Int(1e7), show_progress = true,
+        mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
+        mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
         mx_chk_att = 10, diffeq)
-    pidx = :Re; spp = 10000
+    pidx = :Re; spp = 2000
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 
     ## RECURENCE CONTINUATION
@@ -97,7 +97,7 @@ function continuation_projected_E9D()
     mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
         mx_chk_fnd_att = 10000, stop_at_Δt = false, store_once_per_cell = true,
         mx_chk_loc_att = 10000, mx_chk_safety = Int(1e7), show_progress = true, mx_chk_att = 30)
-    pidx = :Re; spp = 5000
+    pidx = :Re; spp = 1000
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 
     ## RECURENCE CONTINUATION
@@ -182,7 +182,7 @@ function plot_bif(arange, att)
 end
 
 
-Re_range = range(300,450, length = 50)
+Re_range = range(300,450, length = 25)
 f,a,r = continuation_E9D(Re_range)
 save("eckhardt_cont_full.jld2","f",f,"a",a,"r",r)
 # # @load "eckhardt_cont_projected.jld2"
