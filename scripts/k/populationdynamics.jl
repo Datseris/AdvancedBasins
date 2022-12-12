@@ -124,42 +124,16 @@ function plot_dynamics(p)
     return fig, t, tr, p
 end
 
-
 """
-Group attractors based on features specified by `featurizer` and then change their labels so that
-the grouped attractors have the same label.
+Given the result of the continuation algorithm (`attractors_info` and `fractions_curves`), group the attractors in `attractors_info` according to the configuration established in `groupingconfig` using features defined in `featurizer`. Also, add up the basin fractions of the grouped attractors. The fractions and attractors are updated in `attractors_info` and `fractions_curves`.
+Uses duplicate code from the matching algorithm.
 """
-function group_and_relabel!(groupingconfig, atts, featurizer, fs=nothing)
-    features = [featurizer(A) for (k, A) in atts]
-    newlabels = length(features) > 1 ? group_features(features, groupingconfig) : keys(atts)
-    rmap = Dict(keys(atts) .=> newlabels)
-    swap_dict_keys!(atts, rmap)
-    !isnothing(fs) && sum_fractions_keys!(fs, rmap)
-    return rmap
-end
-
-"""
-Given a replacement map that is a dictionary mapping the old keys in `fs` to new keys,
-return the updated fractions `fs` that correspond to the sum of the values of `fs` with
-the same key.
-"""
-function sum_fractions_keys!(fs, rmap)
-    newkeys = unique(values(rmap))
-    fssum = Dict(newkeys .=> 0.0)
-    for oldkey in keys(fs)
-        newkey = rmap[oldkey]
-        fssum[newkey] += fs[oldkey]
-        pop!(fs, oldkey)
-    end
-    for newkey in newkeys
-        fs[newkey] = fssum[newkey]
-    end
-    return nothing
-end
-
 function group_and_match_continuation!(groupingconfig, attractors_info, fractions_curves, featurizer; metric = Euclidean(), threshold = Inf)
+    #1. group attractors for first parameter value.
     prev_attractors = attractors_info[1]; prev_fs = fractions_curves[1];
     group_and_relabel!(groupingconfig, prev_attractors, featurizer, prev_fs)
+
+    #2. For subsequent parameters, group attractors and then match them with the previously grouped attractors.
     for (current_attractors, current_fs) in zip(attractors_info[2:end], fractions_curves[2:end])
         group_and_relabel!(groupingconfig, current_attractors, featurizer, current_fs)
         if !isempty(current_attractors) && !isempty(prev_attractors)
@@ -180,6 +154,39 @@ function group_and_match_continuation!(groupingconfig, attractors_info, fraction
     end
     nothing
 end
+
+"""
+Group attractors based on features specified by `featurizer` and then change their labels so that
+the grouped attractors have the same label.
+"""
+function group_and_relabel!(groupingconfig, atts, featurizer, fs=nothing)
+    features = [featurizer(A) for (k, A) in atts]
+    newlabels = length(features) > 1 ? group_features(features, groupingconfig) : keys(atts)
+    rmap = Dict(keys(atts) .=> newlabels)
+    swap_dict_keys!(atts, rmap)
+    !isnothing(fs) && sum_fractions_keys!(fs, rmap)
+    return rmap
+end
+
+"""
+Given a replacement map that is a dictionary mapping the old keys in `fs` to new keys,
+update `fs` to the sum of the values of `fs` with the same key.
+"""
+function sum_fractions_keys!(fs, rmap)
+    newkeys = unique(values(rmap))
+    fssum = Dict(newkeys .=> 0.0)
+    for oldkey in keys(fs)
+        newkey = rmap[oldkey]
+        fssum[newkey] += fs[oldkey]
+        pop!(fs, oldkey)
+    end
+    for newkey in newkeys
+        fs[newkey] = fssum[newkey]
+    end
+    return nothing
+end
+
+
 
 
 reduced_grid(grid, newlength) = map(g -> range(minimum(g), maximum(g); length = newlength), grid)
@@ -210,9 +217,10 @@ ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing)
 mapper = AttractorsViaRecurrences(ds, grid;
         # mx_chk_fnd_att = 9, #values at 9+ dont have the attractor-inattractors-but-not-in-fs problem
         mx_chk_fnd_att = 3, #with the problem
-        Δt= 1.0,
+        Δt = 0.5,
         diffeq,
         stop_at_Δt=true,
+        Ttr = 2000,
     );
 
 redugrid = reduced_grid(grid, 2);
@@ -231,7 +239,14 @@ fs, labels, atts = basins_fractions(mapper, ics; show_progress=false)
 @show atts;
 setdiff(keys(atts), keys(fs)) #reveals the problem
 
-
+distances = DelayEmbeddings.datasets_sets_distances(atts, atts)
+for (attlabel, distances_to_att) in distances
+    for (att2label, distance) in distances_to_att
+        if attlabel == att2label continue end
+        if distance <= 1 println("$attlabel, $att2label, $distance") end
+    end
+end
+end
 #plot attractors
 fig, ax = plot_attractors(atts; idxs=[1,2,3])
 fig
@@ -258,13 +273,6 @@ function _default_seeding_process_deterministic(attractor::AbstractDataset)
     return (attractor.data[i] for i in 1:seeds)
 end
 
-function _default_seeding_process_fixedrng(attractor::AbstractDataset; rng=MersenneTwister(1))
-    max_possible_seeds = 10
-    seeds = round(Int, log(10, length(attractor)))
-    seeds = clamp(seeds, 1, max_possible_seeds)
-    return (rand(rng, attractor.data) for _ in 1:seeds)
-end
-
 isextinct(A, idx) = all(A[:, idx] .<= 1e-2)
 function get_metric(unitidx=nothing)
     if isnothing(unitidx)
@@ -284,15 +292,13 @@ end
 pidx = :D; ps = 0.2:0.005:0.3;
 xg = range(0, 60,length = 300); grid = ntuple(x->xg, N+3);
 unitidxs = [1,2,3,4,5,6]
-# unitidxs = [5]
+unitidxs = [3]
 samples_per_parameter = 300
 mx_chk_fnd_att = 9
-groupandmatch_bools = [false, true]
-groupandmatch_savetogether = true
+groupandmatch_bools = [false, true]; groupandmatch_savetogether = true
 threshold = 0.5
 for unitidx in unitidxs
     info_extraction = A -> isextinct(A, unitidx)
-    # info_extraction = identity
     metricname, metric = get_metric(unitidx)
     ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing);
     mapper = AttractorsViaRecurrences(ds, grid;
@@ -301,6 +307,7 @@ for unitidx in unitidxs
             diffeq,
         );
     continuation = RecurrencesSeedingContinuation(mapper; seeds_from_attractor=_default_seeding_process_deterministic, metric, threshold, info_extraction);
+    # continuation = RecurrencesSeedingContinuation(mapper; metric, threshold, info_extraction);
     sampler, = statespace_sampler(Random.MersenneTwister(1234);
         min_bounds = minimum.(grid), max_bounds = maximum.(grid)
     );
@@ -332,18 +339,15 @@ for unitidx in unitidxs
         colors_bands = merge(Dict(label_surviving .=> colors_surviving), Dict(label_extincts .=> colors_extinct))
         #plot
         idxrow = groupandmatch_savetogether ? idx : 1
-        @show idxrow
-        @show fig
         fig, ax = basins_fractions_plot(fractions_curves, collect(ps); idxrow, fig, add_legend=true, legend_labels, colors_bands);
-        # @show idxcol, fig, ax
         ax.xlabel = "D";
         ax.ylabel = "fractions";
         ax.title = ["not grouped", "grouped"][idxrow]
         vlines!(ax, 0.25, color=:black);
-        !groupandmatch_savetogether && save("$(plotsdir())/populationdynamics-fractionscontinuation-fig$figidx-method_$metricname-unitidx_$(unitidx)-samples_$(samples_per_parameter)-mx_chk_fnd_att_$(mx_chk_fnd_att)-groupandmatch_both-th_$(threshold).png", fig, px_per_unit=3)
+        !groupandmatch_savetogether && save("$(plotsdir())/defaultseeding-populationdynamics-fractionscontinuation-fig$figidx-method_$metricname-unitidx_$(unitidx)-samples_$(samples_per_parameter)-mx_chk_fnd_att_$(mx_chk_fnd_att)-groupandmatch_both-th_$(threshold).png", fig, px_per_unit=3)
         # fig
     end
-    groupandmatch_savetogether && save("$(plotsdir())/populationdynamics-fractionscontinuation-fig$figidx-method_$metricname-unitidx_$(unitidx)-samples_$(samples_per_parameter)-mx_chk_fnd_att_$(mx_chk_fnd_att)-groupandmatch_$groupandmatch-th_$(threshold).png", fig, px_per_unit=3)
+    groupandmatch_savetogether && save("$(plotsdir())/defaultseeding-populationdynamics-fractionscontinuation-fig$figidx-method_$metricname-unitidx_$(unitidx)-samples_$(samples_per_parameter)-mx_chk_fnd_att_$(mx_chk_fnd_att)-th_$(threshold).png", fig, px_per_unit=3)
 end
 
     #for tests
