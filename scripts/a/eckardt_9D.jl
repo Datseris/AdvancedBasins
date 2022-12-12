@@ -182,7 +182,7 @@ function plot_bif(arange, att)
 end
 
 
-Re_range = range(300,450, length = 25)
+Re_range = range(320,340, length = 25)
 f,a,r = continuation_E9D(Re_range)
 save("eckhardt_cont_full.jld2","f",f,"a",a,"r",r)
 # # @load "eckhardt_cont_projected.jld2"
