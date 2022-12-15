@@ -164,3 +164,103 @@ function Eckhardt_9D(Re = 337.)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     return ds
 end
+
+# Population dynamics model from Huisman, 2001
+function competition(paperfigurelabel="2")
+    p = CompetitionDynamics(paperfigurelabel)
+    N = size(p.Ks, 2)
+    u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
+    ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing);
+    return ds
+end
+
+monod(r, R, K) = r*R/(K+R)
+function μ!(μs, rs, Rs, Ks)
+    for i in eachindex(μs)
+        mo1 = monod(rs[i], Rs[1], Ks[1,i])
+        mo2 = monod(rs[i], Rs[2], Ks[2,i])
+        mo3 = monod(rs[i], Rs[3], Ks[3,i])
+        μs[i] = min(mo1, mo2, mo3)
+    end
+    nothing
+end
+
+#not the most optimized but runs fine
+function Rcoup!(Rcoups, Ns, Rs, μs, cs)
+    fill!(Rcoups, 0.0)
+    for j in eachindex(Rcoups)
+        for i in eachindex(μs)
+            Rcoups[j] += cs[j,i] * μs[i] * Ns[i]
+        end
+    end
+    nothing
+end
+
+function competition!(du, u, p, t)
+    @unpack rs, Ks, ms, Ss, cs, μs, Rcoups, D = p
+    n = size(Ks, 2)
+    Ns = view(u, 1:n)
+    Rs = view(u, n+1:n+3)
+    dNs = view(du, 1:n)
+    dRs = view(du, n+1:n+3)
+    μ!(μs, rs, Rs, Ks)
+    Rcoup!(Rcoups, Ns, Rs, μs, cs)
+    @. dNs = Ns * (μs - ms)
+    @. dRs = D*(Ss - Rs) - Rcoups
+    nothing
+end
+
+mutable struct CompetitionDynamics
+    rs :: Vector{Float64}
+    ms :: Vector{Float64}
+    Ss :: Vector{Float64}
+    μs :: Vector{Float64}
+    Rcoups :: Vector{Float64}
+    Ks :: Matrix{Float64}
+    cs :: Matrix{Float64}
+    D :: Float64
+end
+
+function CompetitionDynamics(fig="1")
+    if fig == "4" || fig == "1"
+        Ks  = [
+            0.20 0.05 0.50 0.05 0.50 0.03 0.51 0.51;
+            0.15 0.06 0.05 0.50 0.30 0.18 0.04 0.31;
+            0.15 0.50 0.30 0.06 0.05 0.18 0.31 0.04;
+        ]
+
+        cs = [
+            0.20 0.10 0.10 0.10 0.10 0.22 0.10 0.10;
+            0.10 0.20 0.10 0.10 0.20 0.10 0.22 0.10;
+            0.10 0.10 0.20 0.20 0.10 0.10 0.10 0.22;
+        ]
+        if fig == "1"
+            Ks = Ks[:, 1:5]
+            cs = cs[:, 1:5]
+        end
+    elseif fig == "2" || fig == "3"
+        Ks = [
+            0.20 0.05 1.00 0.05 1.20;
+            0.25 0.10 0.05 1.00 0.40;
+            0.15 0.95 0.35 0.10 0.05;
+        ]
+
+        cs = [
+            0.20 0.10 0.10 0.10 0.10;
+            0.10 0.20 0.10 0.10 0.20;
+            0.10 0.10 0.20 0.20 0.10;
+        ]
+
+    else
+        @error "nope"
+    end
+
+    N = size(Ks, 2)
+    rs = [1.0 for i=1:N]
+    D = 0.25
+    ms = [D for i=1:N]
+    Ss = [10.0 for j=1:3]
+    μs = zeros(Float64, N)
+    Rcoups = zeros(Float64, 3)
+    return CompetitionDynamics(rs, ms, Ss, μs, Rcoups, Ks, cs, D)
+end

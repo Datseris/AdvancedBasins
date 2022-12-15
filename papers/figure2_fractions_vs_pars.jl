@@ -122,6 +122,17 @@ config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_c
 push!(configs, config)
 push!(attractor_names, entries)
 
+# Population dynamics
+ds = competition()
+mapper_config = (; Δt= 1.0, mx_chk_fnd_att=9);
+xg = range(0, 60,length = 300); grid = ntuple(x->xg, 8);
+pidx = :D
+entries = nothing
+prange = range(0.2, 0.3; length = P)
+config = FractionsRecurrencesConfig("populationdynamics", ds, prange, pidx, grid, mapper_config, N)
+push!(configs, config)
+push!(attractor_names, entries)
+
 # %% Run all systems through the `produce_or_load` pipeline (see `src`)
 fractions_container = []
 for config in configs
