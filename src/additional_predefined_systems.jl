@@ -166,7 +166,7 @@ function Eckhardt_9D(Re = 337.)
 end
 
 # Population dynamics model from Huisman, 2001
-function competition(paperfigurelabel="1")
+function competition(paperfigurelabel="2")
     p = CompetitionDynamics(paperfigurelabel)
     N = size(p.Ks, 2)
     u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
@@ -184,7 +184,8 @@ function μ!(μs, rs, Rs, Ks)
     end
     nothing
 end
-#not the most optimied but w/e
+
+#not the most optimized but runs fine
 function Rcoup!(Rcoups, Ns, Rs, μs, cs)
     fill!(Rcoups, 0.0)
     for j in eachindex(Rcoups)
@@ -255,7 +256,6 @@ function CompetitionDynamics(fig="1")
     end
 
     N = size(Ks, 2)
-
     rs = [1.0 for i=1:N]
     D = 0.25
     ms = [D for i=1:N]
