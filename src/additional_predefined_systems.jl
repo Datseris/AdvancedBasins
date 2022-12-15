@@ -122,45 +122,145 @@ mutable struct E9DParameters{M}
 end
 function E9DParameters(; Re = 307.)
    Lx = 1.75π; Lz = 1.2π
-   α = 2π/Lx; β = π/2; γ = 2π/Lz; 
-    Kαγ = sqrt(α^2 + γ^2); 
-    Kβγ = sqrt(β^2 + γ^2); 
+   α = 2π/Lx; β = π/2; γ = 2π/Lz;
+    Kαγ = sqrt(α^2 + γ^2);
+    Kβγ = sqrt(β^2 + γ^2);
     Kαβγ = sqrt(α^2 + β^2 + γ^2)
-    k = [   β^2; 
+    k = [   β^2;
             4*β^2/3+ γ^2;
-            β^2+γ^2; 
-            (3*α^2+4*β^2)/3; 
-            α^2 + β^2; 
-            (3*α^2 + 4*β^2 + 3*γ^2)/3;  
-            α^2 + β^2 + γ^2; 
-            α^2 + β^2 + γ^2; 
+            β^2+γ^2;
+            (3*α^2+4*β^2)/3;
+            α^2 + β^2;
+            (3*α^2 + 4*β^2 + 3*γ^2)/3;
+            α^2 + β^2 + γ^2;
+            α^2 + β^2 + γ^2;
             9*β^2]
     σ = [-√(3/2)*β*γ/Kαβγ;  √(3/2)*β*γ/Kβγ;
-         5√2*γ^2/(3√3*Kαγ); -γ^2/(√6*Kαγ); -α*β*γ/(√6*Kαγ*Kαβγ); -√(3/2)*β*γ/Kβγ; -√(3/2)*β*γ/Kβγ; 
+         5√2*γ^2/(3√3*Kαγ); -γ^2/(√6*Kαγ); -α*β*γ/(√6*Kαγ*Kαβγ); -√(3/2)*β*γ/Kβγ; -√(3/2)*β*γ/Kβγ;
          2*α*β*γ/(√6*Kαγ*Kβγ); (β^2*(3*α^2+γ^2)-3*γ^2*(α^2+γ^2))/(√6*Kαγ*Kβγ*Kαβγ);
-         -α/√6; -10*α^2/(3*√6*Kαγ); -√(3/2)*α*β*γ/(Kαγ*Kβγ); -√(3/2)*α^2*β^2/(Kαγ*Kβγ*Kαβγ); -α/√6; 
+         -α/√6; -10*α^2/(3*√6*Kαγ); -√(3/2)*α*β*γ/(Kαγ*Kβγ); -√(3/2)*α^2*β^2/(Kαγ*Kβγ*Kαβγ); -α/√6;
          α/√6; α^2/(√6*Kαγ); -α*β*γ/(√6*Kαγ*Kαβγ); α/√6; 2*α*β*γ/(√6*Kαγ*Kβγ);
-         α/√6; √(3/2)*β*γ/Kαβγ; 10*(α^2 - γ^2)/(3√6*Kαγ); -2√2*α*β*γ/(√3*Kαγ*Kβγ); α/√6; √(3/2)*β*γ/Kαβγ; 
+         α/√6; √(3/2)*β*γ/Kαβγ; 10*(α^2 - γ^2)/(3√6*Kαγ); -2√2*α*β*γ/(√3*Kαγ*Kβγ); α/√6; √(3/2)*β*γ/Kαβγ;
          -α/√6; (γ^2-α^2)/(√6*Kαγ); α*β*γ/(√6*Kαγ*Kβγ);
          2*α*β*γ/(√6*Kαγ*Kαβγ); γ^2*(3*α^2-β^2+3*γ^2)/(√6*Kαγ*Kβγ*Kαβγ);
-        √(3/2)*β*γ/Kβγ;  -√(3/2)*β*γ/Kαβγ 
-        ] 
+        √(3/2)*β*γ/Kβγ;  -√(3/2)*β*γ/Kαβγ
+        ]
     return E9DParameters(k, σ, Re)
 end
 function E9D!(du, u, p, t)
     (; k, σ, Re) = p
-    du[1] = -u[1]*k[1]/Re + σ[1]*u[6]*u[8] + σ[2]*u[2]*u[3] + k[1]/Re; 
+    du[1] = -u[1]*k[1]/Re + σ[1]*u[6]*u[8] + σ[2]*u[2]*u[3] + k[1]/Re;
     du[2] = -u[2]*k[2]/Re + σ[3]*u[4]*u[6] + σ[4]*u[5]*u[7] + σ[5]*u[5]*u[8] + σ[6]*u[1]*u[3] + σ[7]*u[3]*u[9];
-    du[3] = -u[3]*k[3]/Re + σ[8]*(u[4]*u[7]+u[5]*u[6]) + σ[9]*u[4]*u[8]; 
-    du[4] = -u[4]*k[4]/Re + σ[10]*u[1]*u[5] + σ[11]*u[2]*u[6] + σ[12]*u[3]*u[7] + σ[13]*u[3]*u[8] + σ[14]*u[5]*u[9]; 
-    du[5] = -u[5]*k[5]/Re + σ[15]*u[1]*u[4] + σ[16]*u[2]*u[7] + σ[17]*u[2]*u[8] + σ[18]*u[4]*u[9] + σ[19]*u[3]*u[6]; 
+    du[3] = -u[3]*k[3]/Re + σ[8]*(u[4]*u[7]+u[5]*u[6]) + σ[9]*u[4]*u[8];
+    du[4] = -u[4]*k[4]/Re + σ[10]*u[1]*u[5] + σ[11]*u[2]*u[6] + σ[12]*u[3]*u[7] + σ[13]*u[3]*u[8] + σ[14]*u[5]*u[9];
+    du[5] = -u[5]*k[5]/Re + σ[15]*u[1]*u[4] + σ[16]*u[2]*u[7] + σ[17]*u[2]*u[8] + σ[18]*u[4]*u[9] + σ[19]*u[3]*u[6];
     du[6] = -u[6]*k[6]/Re + σ[20]*u[1]*u[7] + σ[21]*u[1]*u[8] + σ[22]*u[2]*u[4]+ σ[23]*u[3]*u[5] + σ[24]*u[7]*u[9] + σ[25]*u[8]*u[9]
     du[7] = -u[7]*k[7]/Re + σ[26]*(u[1]*u[6]+u[6]*u[9]) + σ[27]*u[2]*u[5] + σ[28]*u[3]*u[4]
-    du[8] = -u[8]*k[8]/Re + σ[29]*u[2]*u[5] + σ[30]*u[3]*u[4] 
-    du[9] = -u[9]*k[9]/Re + σ[31]*u[2]*u[3] + σ[32]*u[6]*u[8] 
+    du[8] = -u[8]*k[8]/Re + σ[29]*u[2]*u[5] + σ[30]*u[3]*u[4]
+    du[9] = -u[9]*k[9]/Re + σ[31]*u[2]*u[3] + σ[32]*u[6]*u[8]
 end
 function Eckhardt_9D(Re = 337.)
     p = E9DParameters(; Re = Re)
     ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     return ds
+end
+
+# Population dynamics model from Huisman, 2001
+function competition(paperfigurelabel="1")
+    p = CompetitionDynamics(paperfigurelabel)
+    N = size(p.Ks, 2)
+    u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
+    ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing);
+    return ds
+end
+
+monod(r, R, K) = r*R/(K+R)
+function μ!(μs, rs, Rs, Ks)
+    for i in eachindex(μs)
+        mo1 = monod(rs[i], Rs[1], Ks[1,i])
+        mo2 = monod(rs[i], Rs[2], Ks[2,i])
+        mo3 = monod(rs[i], Rs[3], Ks[3,i])
+        μs[i] = min(mo1, mo2, mo3)
+    end
+    nothing
+end
+#not the most optimied but w/e
+function Rcoup!(Rcoups, Ns, Rs, μs, cs)
+    fill!(Rcoups, 0.0)
+    for j in eachindex(Rcoups)
+        for i in eachindex(μs)
+            Rcoups[j] += cs[j,i] * μs[i] * Ns[i]
+        end
+    end
+    nothing
+end
+
+function competition!(du, u, p, t)
+    @unpack rs, Ks, ms, Ss, cs, μs, Rcoups, D = p
+    n = size(Ks, 2)
+    Ns = view(u, 1:n)
+    Rs = view(u, n+1:n+3)
+    dNs = view(du, 1:n)
+    dRs = view(du, n+1:n+3)
+    μ!(μs, rs, Rs, Ks)
+    Rcoup!(Rcoups, Ns, Rs, μs, cs)
+    @. dNs = Ns * (μs - ms)
+    @. dRs = D*(Ss - Rs) - Rcoups
+    nothing
+end
+
+mutable struct CompetitionDynamics
+    rs :: Vector{Float64}
+    ms :: Vector{Float64}
+    Ss :: Vector{Float64}
+    μs :: Vector{Float64}
+    Rcoups :: Vector{Float64}
+    Ks :: Matrix{Float64}
+    cs :: Matrix{Float64}
+    D :: Float64
+end
+
+function CompetitionDynamics(fig="1")
+    if fig == "4" || fig == "1"
+        Ks  = [
+            0.20 0.05 0.50 0.05 0.50 0.03 0.51 0.51;
+            0.15 0.06 0.05 0.50 0.30 0.18 0.04 0.31;
+            0.15 0.50 0.30 0.06 0.05 0.18 0.31 0.04;
+        ]
+
+        cs = [
+            0.20 0.10 0.10 0.10 0.10 0.22 0.10 0.10;
+            0.10 0.20 0.10 0.10 0.20 0.10 0.22 0.10;
+            0.10 0.10 0.20 0.20 0.10 0.10 0.10 0.22;
+        ]
+        if fig == "1"
+            Ks = Ks[:, 1:5]
+            cs = cs[:, 1:5]
+        end
+    elseif fig == "2" || fig == "3"
+        Ks = [
+            0.20 0.05 1.00 0.05 1.20;
+            0.25 0.10 0.05 1.00 0.40;
+            0.15 0.95 0.35 0.10 0.05;
+        ]
+
+        cs = [
+            0.20 0.10 0.10 0.10 0.10;
+            0.10 0.20 0.10 0.10 0.20;
+            0.10 0.10 0.20 0.20 0.10;
+        ]
+
+    else
+        @error "nope"
+    end
+
+    N = size(Ks, 2)
+
+    rs = [1.0 for i=1:N]
+    D = 0.25
+    ms = [D for i=1:N]
+    Ss = [10.0 for j=1:3]
+    μs = zeros(Float64, N)
+    Rcoups = zeros(Float64, 3)
+    return CompetitionDynamics(rs, ms, Ss, μs, Rcoups, Ks, cs, D)
 end
