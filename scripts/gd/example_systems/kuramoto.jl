@@ -130,59 +130,13 @@ end
 
 #     return [mean(x) for x in columns(A)]
 # end
-
-# Okay, here we define the aggregation function that
-# takes in the output of `basins_fractions_ontinuation`
-# and aggregates it to different dicts
-# function aggregate_attractors_and_fractions(...)
-# inputs
 featurizer = featurizer_kuramoto
 
-# All the following will become one nice function
-# "group_attractors" or something like that.
-
-# Set up containers
-P = length(prange)
-example_feature = featurizer(first(values(attractors_info[1])))
-features = typeof(example_feature)[]
-original_labels = keytype(first(fractions_curves))[]
-parameter_idxs = Int[]
-unlabeled_fractions = zeros(P)
-# Transform original data into sequential vectors
-spp = length(prange)
-
-for i in eachindex(fractions_curves)
-    fs = fractions_curves[i]
-    ai = attractors_info[i]
-    A = length(ai)
-    append!(parameter_idxs, (i for _ in 1:A))
-    unlabeled_fractions[i] = get(fs, -1, 0.0)
-    for k in keys(ai)
-        push!(original_labels, k)
-        push!(features, featurizer(ai[k]))
-    end
-end
-
+# use API to cluster attractors
 clust_config = GroupViaClustering(min_neighbors = 10)
-par_weight = 0
-# TODO: This becomes "group_features"
-clustered_labels = Attractors.cluster_all_features(features, clust_config, par_weight)
-# okay this finally worked but its results are still rather sad; I get three attractors
-
-# Anyways, time to reconstruct the joint fractions
-joint_fractions = [Dict{Int,Float64}() for _ in 1:P]
-current_p_idx = 0
-for j in eachindex(clustered_labels)
-    new_label = clustered_labels[j]
-    p_idx = parameter_idxs[j]
-    if p_idx > current_p_idx
-        current_p_idx += 1
-        joint_fractions[current_p_idx][-1] = unlabeled_fractions[current_p_idx]
-    end
-    d = joint_fractions[current_p_idx]
-    orig_frac = get(fractions_curves[current_p_idx], original_labels[j], 0)
-    d[new_label] = get(d, new_label, 0) + orig_frac
-end
+joint_fractions = aggregate_attractor_fractions(
+    fractions_curves, attractors_info, featurizer, clust_config
+)
 
 fig = basins_fractions_plot(joint_fractions, prange)
 GLMakie.save(desktop("clustered_kuramoto_recurrences_by_std_and_ω1.png"), fig)
