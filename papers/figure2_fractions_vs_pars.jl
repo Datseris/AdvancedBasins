@@ -5,7 +5,8 @@
 using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
-using GLMakie, Random
+# using GLMakie, Random
+using Random
 include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 include(srcdir("additional_predefined_systems.jl"))
@@ -101,6 +102,34 @@ pidx = 1 # parameter Kd
 prange = range(1e-2, 1e2; length = P)
 entries = nothing
 config = FractionsRecurrencesConfig("cells", ds, prange, pidx, grid, mapper_config, N)
+push!(configs, config)
+push!(attractor_names, entries)
+
+# Eckhardt 9D sheer flow model
+ds = Eckhardt_9D()
+    diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
+yg = range(-2, 2; length = 1001)
+grid = ntuple(x -> yg, 9)
+mapper_config = (; sparse = true, Δt = 1.,   
+        mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
+        mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
+        mx_chk_att = 10, diffeq)
+pidx = :Re
+# sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
+prange = range(300, 450; length = P)
+entries = nothing
+config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N)
+push!(configs, config)
+push!(attractor_names, entries)
+
+# Population dynamics
+ds = competition()
+mapper_config = (; Δt= 1.0, mx_chk_fnd_att=9);
+xg = range(0, 60,length = 300); grid = ntuple(x->xg, 8);
+pidx = :D
+entries = nothing
+prange = range(0.2, 0.3; length = P)
+config = FractionsRecurrencesConfig("populationdynamics", ds, prange, pidx, grid, mapper_config, N)
 push!(configs, config)
 push!(attractor_names, entries)
 
