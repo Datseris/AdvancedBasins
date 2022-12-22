@@ -107,13 +107,13 @@ push!(attractor_names, entries)
 
 # Eckhardt 9D sheer flow model
 ds = Eckhardt_9D()
-    diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
 yg = range(-2, 2; length = 1001)
 grid = ntuple(x -> yg, 9)
-mapper_config = (; sparse = true, Δt = 1.,   
-        mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
-        mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
-        mx_chk_att = 10, diffeq)
+mapper_config = (; sparse = true, Δt = 1.,
+    mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
+    mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
+    mx_chk_att = 10
+)
 pidx = :Re
 # sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 prange = range(300, 450; length = P)
