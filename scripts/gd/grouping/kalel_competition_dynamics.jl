@@ -3,8 +3,6 @@ using DrWatson
 using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
 
-ENV["COLORSCHEME"] = "Petrol"
-
 include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 include(srcdir("additional_predefined_systems.jl"))
@@ -32,7 +30,7 @@ output = fractions_produce_or_load(config; force = false)
 
 @unpack fractions_curves, attractors_info = output
 
-basins_fractions_plot!(axs[1,1], fractions_curves, prange)
+basins_fractions_plot!(axs[1,1], fractions_curves, prange; separatorwidth = 1)
 
 # Aggregation of attractors based on the existence or not of some unit
 unitidxs = 3
@@ -50,7 +48,7 @@ aggregated_fractions, aggregated_info = aggregate_attractor_fractions(
     fractions_curves, attractors_info, featurizer, groupingconfig
 )
 
-basins_fractions_plot!(axs[2,1], aggregated_fractions, prange)
+basins_fractions_plot!(axs[2,1], aggregated_fractions, prange; separatorwidth = 1)
 
 wsave(plotsdir("gd", "competition_dynamics_aggregation.png"), fig)
 
@@ -74,12 +72,14 @@ colors_survive = length(label_survive) == 1 ? [survive_color] : collect(range(co
 colors_extinct   = length(label_extincts) == 1 ? [extinct_color] : collect(range(extinct_color, stop=colorant"red4", length=length(label_extincts)))
 colors = merge(Dict(label_survive .=> colors_survive), Dict(label_extincts .=> colors_extinct))
 
-basins_fractions_plot!(axs[1,1], fractions_curves, prange; colors = colors, labels, add_legend = false)
+basins_fractions_plot!(axs[1,1], fractions_curves, prange;
+colors = colors, labels, add_legend = false, separatorwidth = 1)
 
 # now for the grouped
 labels_grouped = [only(v) < 0.5 ? "extinct" : "survive" for v in values(aggregated_info)]
 colors_grouped = [l == "extinct" ? extinct_color : survive_color for l in labels_grouped]
 
-basins_fractions_plot!(axs[2,1], aggregated_fractions, prange; colors = colors_grouped, labels=labels_grouped)
+basins_fractions_plot!(axs[2,1], aggregated_fractions, prange;
+colors = colors_grouped, labels=labels_grouped, separatorwidth = 1)
 
 wsave(plotsdir("gd", "competition_dynamics_aggregation_specialcolor.png"), fig)

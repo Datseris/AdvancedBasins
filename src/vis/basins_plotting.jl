@@ -79,6 +79,7 @@ end
 
 function basins_fractions_plot!(ax, fractions_curves, prange;
         add_legend = true, colors = COLORS, labels = labels_from_keys(fractions_curves),
+        separatorwidth = 0, separatorcolor = "white",
     )
     ukeys, bands = fractions_to_cumulative(fractions_curves, prange)
     # colors = if length(ukeys) ≤ length(COLORS)
@@ -93,7 +94,10 @@ function basins_fractions_plot!(ax, fractions_curves, prange;
         else
             l, u = bands[j-1], bands[j]
         end
-        band!(ax, prange, l, u; color = colors[j], label = "$(labels[k])")
+        band!(ax, prange, l, u; color = colors[j], label = "$(labels[k])", linewidth = 4)
+        if separatorwidth > 0 && j < length(ukeys)
+            lines!(ax, prange, u; color = separatorcolor, linewidth = separatorwidth)
+        end
     end
     ylims!(ax, 0, 1); xlims!(ax, minimum(prange), maximum(prange))
     add_legend && axislegend(ax; position = :lt)
