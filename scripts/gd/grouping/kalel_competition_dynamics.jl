@@ -2,6 +2,9 @@ using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
+
+ENV["COLORSCHEME"] = "Petrol"
+
 include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 include(srcdir("additional_predefined_systems.jl"))
@@ -49,7 +52,7 @@ aggregated_fractions, aggregated_info = aggregate_attractor_fractions(
 
 basins_fractions_plot!(axs[2,1], aggregated_fractions, prange)
 
-wsave(plotsdir("gd", "competition_dynamics_aggregation.pdf"), fig)
+wsave(plotsdir("gd", "competition_dynamics_aggregation.png"), fig)
 
 # %% same plot, special colors
 fig, axs = subplotgrid(2,1)
@@ -78,3 +81,5 @@ labels_grouped = [only(v) < 0.5 ? "extinct" : "survive" for v in values(aggregat
 colors_grouped = [l == "extinct" ? extinct_color : survive_color for l in labels_grouped]
 
 basins_fractions_plot!(axs[2,1], aggregated_fractions, prange; colors = colors_grouped, labels=labels_grouped)
+
+wsave(plotsdir("gd", "competition_dynamics_aggregation_specialcolor.png"), fig)
