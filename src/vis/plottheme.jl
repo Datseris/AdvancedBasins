@@ -5,11 +5,11 @@
 COLORSCHEMES = Dict(
     "JuliaDynamics" => [
         "#7143E0",
-        "#171A2F",
+        "#191E44",
         "#0A9A84",
-        "#F30F0F",
-        "#465F00",
+        "#C0A12B",
         "#701B80",
+        "#2E6137",
     ],
     "Petrol" => [
         "#00A9B5",
@@ -21,6 +21,7 @@ COLORSCHEMES = Dict(
 )
 
 COLORSCHEME = COLORSCHEMES[get(ENV, "COLORSCHEME", "JuliaDynamics")]
+TEST_NEW_THEME = false # if true will produce a testing figure as a global var `fig`
 
 mutable struct CyclicContainer
     c::Vector
@@ -85,7 +86,7 @@ set_theme!(default_theme)
 
 
 # Testing style (colorscheme)
-if false
+if TEST_NEW_THEME
     using Random
     fig = Figure(resolution = (1200, 800)) # show colors
     display(fig)
@@ -114,8 +115,8 @@ if false
         lines!(ax3, [0, 1], [0, 0] .+ i; color = graycolor(chsv.s), linewidth)
         local x = 0:0.05:5π
         lines!(ax4, x, rand(1:3) .* cos.(x .+ i/2) .+ rand(length(x))/5; color=c, linewidth = 4)
-        barplot!(ax5, barpos[collect(1:4) .+ (i-1)*4], 0.5rand(4) .+ 0.5; width = 1, gap=0.1,color=c)
-        scatterlines!(ax6, rand(3), rand(3); linewidth = 4, markersize = 30)
+        barplot!(ax5, barpos[collect(1:4) .+ (i-1)*4], 0.5rand(4) .+ 0.5; width = 1, gap=0,color=c)
+        scatterlines!(ax6, rand(3), rand(3); linewidth = 4, markersize = 30, color=c)
     end
 end
 
