@@ -12,6 +12,9 @@ include(srcdir("fractions_produce_or_load.jl"))
 include(srcdir("additional_predefined_systems.jl"))
 
 # Global arguments for all sub-panels
+# N = samples_per_parameter = 1000
+# P = total_parameter_values = 101
+
 N = samples_per_parameter = 10
 P = total_parameter_values = 11
 # Diffeq solvers used everywhere (not even stored/saved)
@@ -64,8 +67,10 @@ prange = range(22.0, 26.0; length = P)
 pidx = 2
 entries = [1 => "f.p.", 2 => "f.p.", 3 => "c.a."]
 config = FractionsRecurrencesConfig("lorenz63", ds, prange, pidx, grid, mapper_config, N)
-push!(configs, config)
-push!(attractor_names, entries)
+# We shouldn't include Lorenz63, because we have a lot of systems already and this
+# example is already a simpler case of Lorenz84.
+# push!(configs, config)
+# push!(attractor_names, entries)
 
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
@@ -161,4 +166,4 @@ end
 axs[end, 1].xlabel = "parameter"
 rowgap!(fig.layout, 4)
 display(fig)
-wsave(papersdir("figures", "figure2_fractions.pdf"), fig)
+wsave(papersdir("figures", "figure2_fractions.png"), fig)

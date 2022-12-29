@@ -31,6 +31,7 @@ function fractions_produce_or_load(config::FractionsRecurrencesConfig; force = f
         fractions_produce_or_load_f, config, datadir("basins_fractions");
         filename = pure_hash, force, prefix = config.name, tag = false,
     )
+    println("Loaded $(file).")
     return output
 end
 

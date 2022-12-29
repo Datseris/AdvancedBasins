@@ -20,8 +20,8 @@ display(fig)
 # (distance in state space). **No special matching or metric is used here!!!**
 ds = competition()
 mapper_config = (; Δt= 1.0, mx_chk_fnd_att=9);
-xg = range(0, 60; length = 300);
-grid = ntuple(x->xg, 8);
+xg = range(0, 60; length = 300)
+grid = ntuple(x->xg, 8)
 pidx = :D
 prange = range(0.2, 0.3; length = P)
 config = FractionsRecurrencesConfig("populationdynamics", ds, prange, pidx, grid, mapper_config, N)
@@ -61,6 +61,11 @@ display(fig)
 extinct_color = colorant"red"
 survive_color = colorant"green"
 
+# This is a bit incorrect, because it assumes that if an attractor is extinct,
+# it will always be extinct for this species. However, attractor matching here
+# happened with the centroid method, not by species extinction. And without threshold.
+# So unfortunately, the coloring is incorrect for the first panel of the plot.
+# It is still correct for the second panel though.
 ukeys = unique_keys(attractors_info)
 label_extincts = map(atts->[k for (k,v) in atts if isextinct(v)], attractors_info)
 label_extincts = unique!(reduce(vcat, label_extincts))
@@ -68,8 +73,8 @@ label_survive = [key for key in ukeys if key ∉ label_extincts]
 labels = [k in label_extincts ? "extinct" : "survive" for k in ukeys]
 
 using Makie.Colors
-colors_survive = length(label_survive) == 1 ? [survive_color] : collect(range(colorant"darkolivegreen2", stop=survive_color, length=length(label_survive)))
-colors_extinct   = length(label_extincts) == 1 ? [extinct_color] : collect(range(extinct_color, stop=colorant"red4", length=length(label_extincts)))
+colors_survive = collect(range(colorant"darkolivegreen2", stop=survive_color, length=length(label_survive)))
+colors_extinct = collect(range(extinct_color, stop=colorant"red4", length=length(label_extincts)))
 colors = merge(Dict(label_survive .=> colors_survive), Dict(label_extincts .=> colors_extinct))
 
 basins_fractions_plot!(axs[1,1], fractions_curves, prange;
