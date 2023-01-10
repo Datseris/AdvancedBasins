@@ -1,16 +1,16 @@
 using DrWatson
 @quickactivate
-using DynamicalSystems
+# using DynamicalSystems
 using BenchmarkTools
 using Random
 using DataFrames
-
+using Attractors
 # Define generic timing function that runs benchmarks and saves data
 # u0s is Vector{Pair}
 function benchmark_mappers_and_save(ds, u0s, grid, featurizer, system;
         ε = nothing, clustering_threshold = 0.0, diffeq = NamedTuple(),
         Ttr = 100, Ns = 2 .^ (6:2:12), force = (system, method) -> false,
-        recurrence_kwargs = (;), clustering_config = ClusteringConfig(),
+        recurrence_kwargs = (;), clustering_config = GroupViaClustering(),
     )
 
     sampler, = statespace_sampler(Random.MersenneTwister(1234);
@@ -48,24 +48,24 @@ function benchmark_mappers_and_save(ds, u0s, grid, featurizer, system;
     push!(mappers, (mapper, "proximity"))
 
     mapper = AttractorsViaRecurrences(ds, grid;
-    diffeq, show_progress = false, Ttr, recurrence_kwargs...)
+    diffeq, show_progress = false, Ttr, sparse = false, recurrence_kwargs...)
     push!(mappers, (mapper, "recurrences"))
 
-    mapper = AttractorsViaRecurrencesSparse(ds, grid;
-    diffeq, show_progress = false, Ttr, recurrence_kwargs...)
+    mapper = AttractorsViaRecurrences(ds, grid;
+    diffeq, show_progress = false, Ttr, sparse = true, recurrence_kwargs...)
     push!(mappers, (mapper, "recurrences_sparse"))
 
     # Featurizing, supervised
     # First generate the templates
-    function features_from_u(u)
-        A = trajectory(ds, 100, u; Ttr, Δt = 1, diffeq)
-        featurizer(A, 0)
-    end
-    t = [features_from_u(x[2]) for x in u0s]
-    templates = Dict([u0[1] for u0 ∈ u0s] .=> t) #keeps labels of u0s
-    clusterspecs = ClusteringConfig(; templates, clustering_threshold)
-    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; Ttr, diffeq)
-    push!(mappers, (mapper, "featurizing_supervised"))
+    # function features_from_u(u)
+    #     A = trajectory(ds, 100, u; Ttr, Δt = 1, diffeq)
+    #     featurizer(A, 0)
+    # end
+    # t = [features_from_u(x[2]) for x in u0s]
+    # templates = Dict([u0[1] for u0 ∈ u0s] .=> t) #keeps labels of u0s
+    # clusterspecs = GroupViaClustering(; templates, clustering_threshold)
+    # mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; Ttr, diffeq)
+    # push!(mappers, (mapper, "featurizing_supervised"))
 
     # Featurizing, unsupervised
     mapper = AttractorsViaFeaturizing(ds, featurizer, clustering_config;
@@ -76,10 +76,8 @@ function benchmark_mappers_and_save(ds, u0s, grid, featurizer, system;
     diffeq, Ttr, threaded = true)
     push!(mappers, (mapper, "featurizing_cluster_thread"))
 
-    clustering_config_og = deepcopy(clustering_config);
-    clustering_config_og.num_attempts_radius = 200;
-    clustering_config_og.silhouette_statistic = minimum;
-    clustering_config_og.optimal_radius_method = "silhouettes";
+    clustering_config_og = GroupViaClustering(; num_attempts_radius = 200,
+        silhouette_statistic = minimum, optimal_radius_method = "silhouettes")
     mapper = AttractorsViaFeaturizing(ds, featurizer, clustering_config_og;
     diffeq, Ttr, threaded = false)
     push!(mappers, (mapper, "featurizing_cluster_original"))
