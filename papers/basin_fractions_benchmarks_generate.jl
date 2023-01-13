@@ -134,7 +134,7 @@ let
 
     function featurizer(A, t)
         # This is the number of boxes needed to cover the set
-        probs = probabilities(A, RectangularBinning(0.1))
+        probs = probabilities(ValueHistogram(RectangularBinning(0.1)), A)
         g = exp(entropy(Renyi(0), probs))
         return [g, minimum(A[:,1])]
     end
