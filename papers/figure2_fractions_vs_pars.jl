@@ -5,11 +5,10 @@
 using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
-# using GLMakie, Random
 using Random
 include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
-include(srcdir("additional_predefined_systems.jl"))
+include(srcdir("predefined_systems.jl"))
 
 # Global arguments for all sub-panels
 # N = samples_per_parameter = 1000
@@ -17,8 +16,6 @@ include(srcdir("additional_predefined_systems.jl"))
 
 N = samples_per_parameter = 10
 P = total_parameter_values = 11
-# Diffeq solvers used everywhere (not even stored/saved)
-diffeq = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9, maxiters = Inf)
 
 # %% Used systems
 # In `configs` we put an instance of `FractionsRecurrencesConfiguration`
@@ -28,7 +25,7 @@ attractor_names = []
 
 # Lorenz84
 F = 6.886; G = 1.347; a = 0.255; b = 4.0
-ds = Systems.lorenz84(; F, G, a, b)
+ds = lorenz84(; F, G, a, b)
 M = 600; z = 3
 xg = yg = zg = range(-z, z; length = M)
 grid = (xg, yg, zg)
@@ -40,7 +37,7 @@ mapper_config = (;
     mx_chk_safety = 1e8,
     Ttr = 100,
     Δt = 0.1,
-    stop_at_Δt = true,
+    # stop_at_Δt = true,
 )
 prange = range(1.34, 1.37; length = P)
 pidx = 2
@@ -48,29 +45,6 @@ entries = [1 => "f.p.", 2 => "l.c.", 3 => "c.a."]
 config = FractionsRecurrencesConfig("lorenz84", ds, prange, pidx, grid, mapper_config, N)
 push!(configs, config)
 push!(attractor_names, entries)
-
-# Lorenz63
-ds = Systems.lorenz()
-M = 200
-xg = yg = range(-25, 25; length = M)
-zg = range(0, 60; length = M)
-grid = (xg, yg, zg)
-mapper_config = (;
-    mx_chk_fnd_att = 2000,
-    mx_chk_loc_att = 500,
-    mx_chk_att = 2,
-    Ttr = 500,
-    mx_chk_safety = 1e7,
-    Δt = 0.1,
-)
-prange = range(22.0, 26.0; length = P)
-pidx = 2
-entries = [1 => "f.p.", 2 => "f.p.", 3 => "c.a."]
-config = FractionsRecurrencesConfig("lorenz63", ds, prange, pidx, grid, mapper_config, N)
-# We shouldn't include Lorenz63, because we have a lot of systems already and this
-# example is already a simpler case of Lorenz84.
-# push!(configs, config)
-# push!(attractor_names, entries)
 
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
@@ -115,7 +89,9 @@ ds = Eckhardt_9D()
 yg = range(-2, 2; length = 1001)
 grid = ntuple(x -> yg, 9)
 mapper_config = (; sparse = true, Δt = 1.,
-    mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
+    mx_chk_fnd_att = 2500,
+    # stop_at_Δt = true,
+    store_once_per_cell = true,
     mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
     mx_chk_att = 10
 )
@@ -166,4 +142,6 @@ end
 axs[end, 1].xlabel = "parameter"
 rowgap!(fig.layout, 4)
 display(fig)
+
+# %% Save it
 wsave(papersdir("figures", "figure2_fractions.png"), fig)

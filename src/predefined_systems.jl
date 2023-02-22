@@ -1,3 +1,23 @@
+using DynamicalSystemsBase
+using OrdinaryDiffEq: Tsit5, Vern9
+const diffeq_fast = (alg = Tsit5(), reltol = 1e-6, abstol = 1e-6)
+const diffeq_slow = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9)
+diffeq_default = diffeq_slow # choose high accuracy by default
+
+# Lorenz 84
+function lorenz84(u = [0.1, 0.1, 0.1]; F=6.846, G=1.287, a=0.25, b=4.0)
+    return CoupledODEs(lorenz84_rule, u, [F, G, a, b]; diffeq = diffeq_default)
+end
+@inline @inbounds function lorenz84_rule(u, p, t)
+    F, G, a, b = p
+    x, y, z = u
+    dx = -y^2 -z^2 -a*x + a*F
+    dy = x*y - y - b*x*z + G
+    dz = b*x*y + x*z - z
+    return SVector{3}(dx, dy, dz)
+end
+
+
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
 function lorenz96_ebm_gelbrecht_rule!(dx, x, p, t)
@@ -31,7 +51,7 @@ end
 function lorenz96_ebm_gelbrecht(; N = 32, S = 8.0)
     u0 = [rand(N)..., 230.0]
     p0 = [S] # solar constant
-    ds = ContinuousDynamicalSystem(lorenz96_ebm_gelbrecht_rule!, u0, p0)
+    ds = CoupledODEs(lorenz96_ebm_gelbrecht_rule!, u0, p0; diffeq = diffeq_default)
     return ds
 end
 # Above system, but projected to the last `P` dimensions
@@ -39,11 +59,16 @@ function lorenz96_ebm_gelbrecht_projected(; P = 6, N = 32, kwargs...)
     ds = lorenz96_ebm_gelbrecht(; N, kwargs...)
     projection = (N-P+1):(N+1)
     complete_state = zeros(N-length(projection)+1)
-    pinteg = projected_integrator(ds, projection, complete_state)
+    pinteg = ProjectedDynamicalSystem(ds, projection, complete_state)
     return pinteg
 end
 
 # Cell differentiation model (need citation)
+function cell_differentiation(N = 3, u0 = rand(N); α=4, β=20, n=1.5, Kd=1.0)
+    p = [Kd, α, β, n]
+    ds = CoupledODEs(cell_differentiation_rule!, u0, p; diffeq = diffeq_default)
+    return ds
+end
 function cell_differentiation_rule!(du, u, p, t)
     Kd, α, β, n = p
     sum_u = sum(u)
@@ -52,12 +77,6 @@ function cell_differentiation_rule!(du, u, p, t)
         du[i] = α + (β*C^n)/(1+C^n) - u[i]
     end
     return nothing
-end
-
-function cell_differentiation(N = 3, u0 = rand(N); α=4, β=20, n=1.5, Kd=1.0)
-    p = [Kd, α, β, n]
-    ds = ContinuousDynamicalSystem(cell_differentiation_rule!, u0, p)
-    return ds
 end
 
 # Network of (2nd order) Kuramoto oscillators,
@@ -101,17 +120,13 @@ function second_order_kuramoto!(du, u, p, t)
 end
 function kuramoto_network_2ndorder(; N=10, K=6.0, kwargs...)
     p = KuramotoParameters(; N, K)
-    dummyjac = (J, z0, p, n) -> nothing
-    ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2N), p, dummyjac)
+    ds = CoupledODEs(second_order_kuramoto!, zeros(2N), p; diffeq = diffeq_default)
     return ds
 end
-
-
 
 # A low-dimensional model for turbulent shear flows
 # Jeff Moehlis , Holger Faisst and Bruno Eckhardt
 # DOI: 10.1088/1367-2630/6/1/056
-
 # Geometry of the edge of chaos in a low-dimensional turbulent shear flow model
 # Madhura Joglekar,Ulrike Feudel, and James A. Yorke
 # DOI: 10.1103/PhysRevE.91.052903
@@ -161,7 +176,7 @@ function E9D!(du, u, p, t)
 end
 function Eckhardt_9D(Re = 337.)
     p = E9DParameters(; Re = Re)
-    ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
+    ds = CoupledODEs(E9D!, zeros(9), p; diffeq = diffeq_default)
     return ds
 end
 
@@ -171,7 +186,7 @@ function competition(paperfigurelabel="2")
     p = CompetitionDynamics(paperfigurelabel)
     N = size(p.Ks, 2)
     u0 = [[0.1 for i=1:N]; [S for S in p.Ss]]
-    ds = ContinuousDynamicalSystem(competition!, u0, p, (J, z, p, t)->nothing);
+    ds = CoupledODEs(competition!, u0, p; diffeq = diffeq_default);
     return ds
 end
 

@@ -7,18 +7,15 @@ versus parameter for a given dynamical system. This is the recurrences version.
 """
 struct FractionsRecurrencesConfig
     name::String
-    ds::GeneralizedDynamicalSystem
+    ds::DynamicalSystem
     prange::AbstractVector
     pidx::Union{Integer, Symbol}
     grid::Tuple
     mapper_config::NamedTuple
     samples_per_parameter::Int
+    threshold::Float64 # `Inf` by default
 end
-
-using OrdinaryDiffEq: Tsit5, Vern9
-const diffeq_fast = (alg = Tsit5(), reltol = 1e-6, abstol = 1e-6, maxiters = Inf)
-const diffeq_slow = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9, maxiters = Inf)
-
+FractionsRecurrencesConfig(a,b,c,d,e,f,g) = FractionsRecurrencesConfig(a,b,c,d,e,f,g,Inf)
 
 function fractions_produce_or_load(config::FractionsRecurrencesConfig; force = false)
     # used to obtain a hash from `config` without using "bad" fields like `ds`
@@ -37,13 +34,19 @@ end
 
 function fractions_produce_or_load_f(config::FractionsRecurrencesConfig)
     (; ds, prange, pidx, grid, mapper_config, samples_per_parameter, name) = config
-    mapper = AttractorsViaRecurrences(ds, grid; mapper_config..., diffeq = diffeq_slow)
+
+    mapper = AttractorsViaRecurrences(ds, grid; mapper_config...)
+
     sampler, = statespace_sampler(Random.MersenneTwister(1234);
         min_bounds = minimum.(grid), max_bounds = maximum.(grid)
     )
-    continuation = RecurrencesSeedingContinuation(mapper; threshold = Inf)
-    fractions_curves, attractors_info = basins_fractions_continuation(
-        continuation, prange, pidx, sampler;
+
+    rsc = RecurrencesSeededContinuation(mapper;
+        threshold = config.threshold
+    )
+
+    fractions_curves, attractors_info = continuation(
+        rsc, prange, pidx, sampler;
         show_progress = true, samples_per_parameter
     )
     # Notice that we do not store the system's parameters or dynamic rule.
