@@ -6,16 +6,20 @@ using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
-include(srcdir("vis", "basins_plotting.jl"))
+include(srcdir("vis", " basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 include(srcdir("predefined_systems.jl"))
 
 # Global arguments for all sub-panels
-# N = samples_per_parameter = 1000
-# P = total_parameter_values = 101
 
-N = samples_per_parameter = 10
-P = total_parameter_values = 11
+N = samples_per_parameter = 1000
+P = total_parameter_values = 101
+
+# N = samples_per_parameter = 100
+# P = total_parameter_values = 51
+
+# N = samples_per_parameter = 10
+# P = total_parameter_values = 11
 
 # %% Used systems
 # In `configs` we put an instance of `FractionsRecurrencesConfiguration`
@@ -49,10 +53,10 @@ push!(attractor_names, entries)
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
 X = 16 # number of x variables
-P = 6 # project system to last `P` variables
-ds = lorenz96_ebm_gelbrecht_projected(; N = X, P)
+projection_number = 6 # project system to last
+ds = lorenz96_ebm_gelbrecht_projected(; N = X, P = projection_number)
 g = 101 # division of grid
-xgs = [range(-8, 15; length = g÷10) for i in 1:P]
+xgs = [range(-8, 15; length = g÷10) for i in 1:projection_number]
 Tg = range(230, 350; length = g)
 grid = (xgs..., Tg)
 mapper_config = (;
@@ -106,7 +110,7 @@ push!(attractor_names, entries)
 # Population dynamics
 ds = competition()
 mapper_config = (; Δt= 1.0, mx_chk_fnd_att=9);
-xg = range(0, 60,length = 300); grid = ntuple(x->xg, 8);
+xg = range(0, 60; length = 300); grid = ntuple(x->xg, 8);
 pidx = :D
 entries = nothing
 prange = range(0.2, 0.3; length = P)
@@ -125,12 +129,15 @@ end
 # %% Make the plot
 systems = getproperty.(configs, :name)
 systems = [split(s, '_')[1] for s in systems]
+systems[5] = "competition"
 L = length(configs)
-fig, axs = subplotgrid(L, 1; ylabels = systems)
+fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (1000, 800),)
 
 for i in 1:L
     prange = configs[i].prange
-    basins_fractions_plot!(axs[i, 1], fractions_container[i], prange)
+    basins_fractions_plot!(axs[i, 1], fractions_container[i], prange;
+        add_legend = false, separatorwidth = 0
+    )
     # legend
     entries = attractor_names[i]
     if !isnothing(entries)
