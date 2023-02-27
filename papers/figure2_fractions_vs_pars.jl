@@ -138,7 +138,7 @@ fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (1000, 800),)
 
 for i in 1:L
     prange = configs[i].prange
-    basins_fractions_plot!(axs[i, 1], fractions_container[i], prange;
+    basins_curves_plot!(axs[i, 1], fractions_container[i], prange;
         add_legend = false, separatorwidth = 0
     )
     # legend

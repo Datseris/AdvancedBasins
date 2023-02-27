@@ -62,6 +62,6 @@ fractions_curves, attractors_info = continuation(
     rsc, E0_range, :E0, sampler,
 )
 
-fig = basins_fractions_plot(fractions_curves, E0_range)
+fig = basins_curves_plot(fractions_curves, E0_range)
 
 # So fucking easy... ;)

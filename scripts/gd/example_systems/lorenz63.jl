@@ -58,7 +58,7 @@ animate_attractors_continuation(
 # %%
 
 # Barplot of all basins, order by keys
-fig = basins_fractions_plot(fractions_curves, prange)
+fig = basins_curves_plot(fractions_curves, prange)
 
 # Makie.save("lorenz84_fracs.png", fig; px_per_unit = 4)
 # negate_remove_bg("lorenz84_fracs.png")

@@ -106,7 +106,7 @@ display(fig)
 
 for i in 1:L
     @show i
-    basins_fractions_plot!(axs[i, 1], fractions_container[i], pranges[i])
+    basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i])
     # legend
     entries = attractor_names[i]
     if !isnothing(entries)

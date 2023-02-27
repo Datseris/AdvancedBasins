@@ -109,7 +109,7 @@ fractions_curves, attractors_info = basins_fractions_continuation(
     show_progress = true, samples_per_parameter = 20
 )
 
-fig = basins_fractions_plot(fractions_curves, prange)
+fig = basins_curves_plot(fractions_curves, prange)
 display(fig)
 GLMakie.save(desktop("original_kuramoto_recurrences.png"), fig)
 
@@ -138,7 +138,7 @@ joint_fractions = aggregate_attractor_fractions(
     fractions_curves, attractors_info, featurizer, clust_config
 )
 
-fig = basins_fractions_plot(joint_fractions, prange)
+fig = basins_curves_plot(joint_fractions, prange)
 GLMakie.save(desktop("clustered_kuramoto_recurrences_by_std_and_ω1.png"), fig)
 
 # IDea for "whether special node is in sync state":
