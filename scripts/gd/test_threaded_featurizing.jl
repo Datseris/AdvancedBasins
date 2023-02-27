@@ -38,7 +38,7 @@ for k = 1:N
     u = vec([pi.*rand(D); (rand(D) .- 0.5).*12])
     push!(ics, u)
 end
-ics = Dataset(ics)
+ics = StateSpaceSet(ics)
 
 
 ChaosTools.extract_features(mapper_single, ics)

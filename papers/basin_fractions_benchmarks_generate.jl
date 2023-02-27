@@ -17,7 +17,7 @@ function benchmark_mappers_and_save(ds, u0s, grid, featurizer, system;
         min_bounds = minimum.(grid), max_bounds = maximum.(grid)
     )
 
-    ics_container = [Dataset([sampler() for i in 1:N]) for N in Ns]
+    ics_container = [StateSpaceSet([sampler() for i in 1:N]) for N in Ns]
 
     # reusable comparison function which is given to `produce_or_load`
     function mapper_benchmark(config)
@@ -178,7 +178,7 @@ let
     function featurizer(A, t)
         return [mean(A[:, i]) for i in D+1:2*D]
     end
-    
+
     ## Continuation clustering (MCBB)
     #
     clusterspecs = ClusteringConfig()
@@ -197,14 +197,14 @@ let
 
     ## Continuation recurrences
     ##
-    _complete(y) = (length(y) == N) ? [Δϕ; Δω] : y; 
+    _complete(y) = (length(y) == N) ? [Δϕ; Δω] : y;
     _proj_state(y) = y[N+1:2*N]
     psys = projected_integrator(ds, _proj_state, _complete; diffeq)
     yg = range(-17, 17; length = 31)
     grid = ntuple(x -> yg, dimension(psys))
 
-    mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
-        diffeq, 
+    mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,
+        diffeq,
         mx_chk_fnd_att = 100,
         mx_chk_loc_att = 100,
         Ttr = 400.)

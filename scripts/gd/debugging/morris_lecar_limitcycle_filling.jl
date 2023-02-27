@@ -32,7 +32,7 @@ mapper = AttractorsViaRecurrences(ds, (xg, yg);
 
 sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1);
     min_bounds = [-0.5, 0], max_bounds = [0.5, 1])
-ics = Dataset([sampler() for i in 1:1000])
+ics = StateSpaceSet([sampler() for i in 1:1000])
 
 mean_integ_dt = let
     integ = integrator(ds, rand(vec(ics)))

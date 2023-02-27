@@ -125,11 +125,14 @@ for config in configs
     push!(fractions_container, output["fractions_curves"])
 end
 
-
 # %% Make the plot
 systems = getproperty.(configs, :name)
 systems = [split(s, '_')[1] for s in systems]
-systems[5] = "competition"
+systems[1] = "paradigmatic chaotic\nmodel (lorenz84)"
+systems[2] = "high-dim. climate\ntoy model"
+systems[3] = "cell\ndifferentiation"
+systems[4] = "turbulent\nflow"
+systems[5] = "ecological\ncompetition\ndynamics"
 L = length(configs)
 fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (1000, 800),)
 
