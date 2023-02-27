@@ -54,14 +54,20 @@ fs, labels, attractors = basins_fractions(mapper, ics)
 # and trivially fast :)
 
 # %% Basins fractions
-E0_range = range(-2, -0.9; length = 51)
+E0_range = range(-2, -0.9; length = 101)
 
 rsc = RecurrencesSeededContinuation(mapper)
 
 fractions_curves, attractors_info = continuation(
-    rsc, E0_range, :E0, sampler,
+    rsc, E0_range, :E0, sampler, samples_per_parameter = 100,
 )
 
 fig = basins_curves_plot(fractions_curves, E0_range)
 
 # So fucking easy... ;)
+# %% Plot Attractors
+attractor_to_real = A -> maximum(x[1] for x in A)
+attractors_curves_plot(attractors_info, attractor_to_real, E0_range)
+
+# %% plot both!
+basins_attractors_curves_plot(fractions_curves, attractors_info, attractor_to_real, E0_range)
