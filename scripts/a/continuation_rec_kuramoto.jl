@@ -35,7 +35,8 @@ function KuramotoParameters(; N = 10, α = 0.1, K = 6.0, seed = 53867481290)
 end
 
 
-function continuation_problem(;thr = Inf)
+function continuation_problem(di)
+    @unpack Nd, Ns, thr, res = di
 
 	# Set up the parameters for the network
 	N = 30 # in this case this is the number of oscillators, the system dimension is twice this value
@@ -71,8 +72,16 @@ end
 
 f, a, K = continuation_problem(thr = .1)
 
-save("test_fractions_cont_rec_kur.jld2", "f", f, "K", K)
 
-include("figs_continuation_kuramoto.jl")
+Ns = 1000
+Nd = 30
+res = 101
+thr = 0.1
+params = @strdict Ns res thr Nd
+data, file = produce_or_load(
+    datadir("data/basins_fractions"), params, continuation_problem;
+    prefix = "kur_recurrences", storepatch = false, suffix = "jld2", force = false
+)
+@unpack f,K = data
 
-plot_filled_curves(f, K, "fig_kur_rec_N=1000.png")
+
