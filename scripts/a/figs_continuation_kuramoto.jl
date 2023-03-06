@@ -1,6 +1,6 @@
 using DrWatson 
-@quickactivate
-using DynamicalSystems
+# @quickactivate
+# using DynamicalSystems
 using Attractors
 using JLD2
 using CairoMakie
@@ -120,17 +120,17 @@ end
 
 
 
-d = load("fractions_clust_att_kur.jld2")
-f = d["f"]
-K = d["K"]
-plot_filled_curves(f, K,  "cont_kur_clust_att.png")
+# d = load("fractions_clust_att_kur.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K,  "cont_kur_clust_att.png")
 
-d = load("fractions_cont_mccb_kur.jld2")
-f = d["f"]
-K = d["K"]
-plot_filled_curves(f, K, "cont_kur_mccb.png")
+# d = load("fractions_cont_mccb_kur.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K, "cont_kur_mccb.png")
 
-d = load("fractions_cont_rec_kur.jld2")
-f = d["f"]
-K = d["K"]
-plot_filled_curves(f, K, "cont_kur_rec.png")
+# d = load("fractions_cont_rec_kur.jld2")
+# f = d["f"]
+# K = d["K"]
+# plot_filled_curves(f, K, "cont_kur_rec.png")
