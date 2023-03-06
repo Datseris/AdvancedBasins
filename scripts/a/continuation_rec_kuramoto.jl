@@ -1,7 +1,7 @@
 using DrWatson 
-@quickactivate
+# @quickactivate
 using Revise
-using DynamicalSystems
+# using DynamicalSystems
 using Attractors
 using Random
 using Graphs
@@ -40,36 +40,39 @@ function continuation_problem(;thr = Inf)
 	# Set up the parameters for the network
 	N = 30 # in this case this is the number of oscillators, the system dimension is twice this value
         p = KuramotoParameters(; N)
-        ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2*N), p, (J, z0, p, n) -> nothing)
         diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
+        ds = CoupledODEs(second_order_kuramoto!, zeros(2*N), p; diffeq)
 
         _complete(y) = (length(y) == N) ? zeros(2*N) : y; 
         _proj_state(y) = y[N+1:2*N]
-        psys = projected_integrator(ds, _proj_state, _complete; diffeq)
-        yg = range(-17, 17; length = 61)
+        psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
+        yg = range(-17, 17; length = 101)
         grid = ntuple(x -> yg, dimension(psys))
-	mapper = Attractors.AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
-            diffeq, 
+	mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
             show_progress = true, mx_chk_fnd_att = 100,
-            mx_chk_safety = Int(1e5),
-            mx_chk_loc_att = 100,
+            mx_chk_safety = Int(1e7),
+            # mx_chk_loc_att = 100,
             Ttr = 200.)
 
         sampler, = statespace_sampler(Random.MersenneTwister(1234);
             min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
         )
 
-        continuation = RecurrencesSeedingContinuation(mapper; threshold = thr)
+        cont_rec = RecurrencesSeededContinuation(mapper; threshold = thr)
         Kidx = :K
         Krange = range(0., 10; length = 20)
-        fractions_curves, attractors_info = basins_fractions_continuation(
-            continuation, Krange, Kidx, sampler;
-            show_progress = true, samples_per_parameter = 5000
+        fractions_curves, attractors_info = continuation(
+            cont_rec, Krange, Kidx, sampler;
+            show_progress = true, samples_per_parameter = 1000
         )
 
 	return fractions_curves, attractors_info, Krange
 end
 
-f, a, K = continuation_problem(thr = .5)
+f, a, K = continuation_problem(thr = .1)
 
-save("fractions_cont_rec_kur.jld2", "f", f, "K", K)
+save("test_fractions_cont_rec_kur.jld2", "f", f, "K", K)
+
+include("figs_continuation_kuramoto.jl")
+
+plot_filled_curves(f, K, "fig_kur_rec_N=1000.png")

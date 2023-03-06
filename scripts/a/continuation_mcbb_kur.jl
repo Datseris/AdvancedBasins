@@ -1,7 +1,7 @@
 using DrWatson
-@quickactivate
+# @quickactivate
 using Revise
-using DynamicalSystems
+# using DynamicalSystems
 using Attractors
 using Random
 using Graphs
@@ -35,28 +35,28 @@ end
 function continuation_problem()
     N = 30
     p = KuramotoParameters(; N)
-    ds = ContinuousDynamicalSystem(second_order_kuramoto!, zeros(2*N), p, (J, z0, p, n) -> nothing)
     diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
+    ds = CoupledODEs(second_order_kuramoto!, zeros(2*N), p; diffeq)
 
     function featurizer(A, t)
         return [mean(A[:, i]) for i in N+1:2*N]
     end
 
-    clusterspecs = Attractors.GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500)
-    mapper = Attractors.AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 200, Ttr = 400, diffeq)
+    clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
+    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 200, Ttr = 400)
 
-    sampler, = ChaosTools.statespace_sampler(Random.MersenneTwister(1234);
+    sampler, = statespace_sampler(Random.MersenneTwister(1234);
         min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
     )
 
-    continuation = ClusteringAcrossParametersContinuation(mapper; use_mmap = true)
+    group_cont = GroupAcrossParameterContinuation(mapper)
     Kidx = :K
     Krange = range(0., 10; length = 20)
-    f, a = basins_fractions_continuation(
-                continuation, Krange, Kidx, sampler;
-                show_progress = true, samples_per_parameter = 5000)
+    f, a = continuation(
+                group_cont, Krange, Kidx, sampler;
+                show_progress = true, samples_per_parameter = 1000)
     return f, a, Krange
 end
 
 f,a,Krange = continuation_problem()
-save("fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
+save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
