@@ -60,3 +60,5 @@ end
 
 f,a,Krange = continuation_problem()
 save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
+include("figs_continuation_kuramoto.jl")
+plot_filled_curves(f,Krange, "tmp_fig_group_mcbb.png")
