@@ -32,8 +32,9 @@ function KuramotoParameters(; N = 10, α = 0.1, K = 6.0, seed = 53867481290)
     return KuramotoParameters(N, α, incidence, P, K)
 end
 
-function continuation_problem()
-    N = 30
+function continuation_problem(di)
+    @unpack Nd, Ns = di
+    N = Nd
     p = KuramotoParameters(; N)
     diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
     ds = CoupledODEs(second_order_kuramoto!, zeros(2*N), p; diffeq)
@@ -52,13 +53,29 @@ function continuation_problem()
     group_cont = GroupAcrossParameterContinuation(mapper)
     Kidx = :K
     Krange = range(0., 10; length = 20)
-    f, a = continuation(
+    fractions_curves, attractors_info = continuation(
                 group_cont, Krange, Kidx, sampler;
-                show_progress = true, samples_per_parameter = 1000)
-    return f, a, Krange
+                show_progress = true, samples_per_parameter = Ns)
+
+    return @strdict(fractions_curves, attractors_info, Krange)
 end
 
-f,a,Krange = continuation_problem()
-save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
+
+Ns = 100
+Nd = 30
+params = @strdict Ns Nd
+data, file = produce_or_load(
+    datadir("data/basins_fractions"), params, continuation_problem;
+    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = false
+)
+@unpack fractions_curves,Krange = data
+
 include("figs_continuation_kuramoto.jl")
-plot_filled_curves(f,Krange, "tmp_fig_group_mcbb.png")
+
+fn = splitext(basename(file))
+plot_filled_curves(fractions_curves, Krange,string(a[1], ".png")) 
+
+# f,a,Krange = continuation_problem()
+# save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
+# include("figs_continuation_kuramoto.jl")
+# plot_filled_curves(f,Krange, "tmp_fig_group_mcbb.png")

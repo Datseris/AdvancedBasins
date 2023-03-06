@@ -1,5 +1,5 @@
 using DrWatson 
-# @quickactivate
+@quickactivate
 using Revise
 # using DynamicalSystems
 using Attractors
@@ -39,7 +39,7 @@ function continuation_problem(di)
     @unpack Nd, Ns, thr, res = di
 
 	# Set up the parameters for the network
-	N = 30 # in this case this is the number of oscillators, the system dimension is twice this value
+	N = Nd # in this case this is the number of oscillators, the system dimension is twice this value
         p = KuramotoParameters(; N)
         diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
         ds = CoupledODEs(second_order_kuramoto!, zeros(2*N), p; diffeq)
@@ -47,13 +47,13 @@ function continuation_problem(di)
         _complete(y) = (length(y) == N) ? zeros(2*N) : y; 
         _proj_state(y) = y[N+1:2*N]
         psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
-        yg = range(-17, 17; length = 101)
+        yg = range(-17, 17; length = res)
         grid = ntuple(x -> yg, dimension(psys))
 	mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = .1,   
             show_progress = true, mx_chk_fnd_att = 100,
             mx_chk_safety = Int(1e7),
             # mx_chk_loc_att = 100,
-            Ttr = 200.)
+            Ttr = 400.)
 
         sampler, = statespace_sampler(Random.MersenneTwister(1234);
             min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
@@ -64,24 +64,26 @@ function continuation_problem(di)
         Krange = range(0., 10; length = 20)
         fractions_curves, attractors_info = continuation(
             cont_rec, Krange, Kidx, sampler;
-            show_progress = true, samples_per_parameter = 1000
+            show_progress = true, samples_per_parameter = Ns
         )
 
-	return fractions_curves, attractors_info, Krange
+	# return fractions_curves, attractors_info, Krange
+	return @strdict(fractions_curves, attractors_info, Krange)
 end
 
-f, a, K = continuation_problem(thr = .1)
 
-
-Ns = 1000
+Ns = 500
 Nd = 30
-res = 101
+res = 61
 thr = 0.1
 params = @strdict Ns res thr Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
     prefix = "kur_recurrences", storepatch = false, suffix = "jld2", force = false
 )
-@unpack f,K = data
+@unpack fractions_curves,Krange = data
 
+include("figs_continuation_kuramoto.jl")
 
+fn = splitext(basename(file))
+plot_filled_curves(fractions_curves, Krange,string(a[1], ".png")) 
