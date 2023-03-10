@@ -73,7 +73,7 @@ data, file = produce_or_load(
 include("figs_continuation_kuramoto.jl")
 
 fn = splitext(basename(file))
-plot_filled_curves(fractions_curves, Krange,string(a[1], ".png")) 
+plot_filled_curves(fractions_curves, Krange,string(fn[1], ".png")) 
 
 # f,a,Krange = continuation_problem()
 # save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
