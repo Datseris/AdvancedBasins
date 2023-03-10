@@ -47,6 +47,11 @@ data, file = produce_or_load(
 )
 @unpack fractions_curves,Krange = data
 
+rmap = retract_keys_to_consecutive(fractions_curves)
+for df in fractions_curves
+    swap_dict_keys!(df, rmap)
+end
+
 include("figs_continuation_kuramoto.jl")
 
 fn = splitext(basename(file))

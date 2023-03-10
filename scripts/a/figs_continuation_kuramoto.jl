@@ -44,7 +44,7 @@ function plot_filled_curves(fractions, prms, figurename)
     end
 
     fig = Figure(resolution = (600, 500))
-    ax = Axis(fig[1,1])
+    ax = Axis(fig[1,1], xlabel = "K")
     for (j, k) in enumerate(ukeys)
         if j == 1
             l, u = 0, bands[j]
@@ -85,7 +85,7 @@ function plot_filled_curves_kuramoto(fractions, prms, figurename)
     end
 
     fig = Figure(resolution = (600, 500))
-    ax = Axis(fig[1,1])
+    ax = Axis(fig[1,1], xlabel = "K")
     for (j, k) in enumerate(ukeys)
         if j == 1
             l, u = 0, bands[j]
