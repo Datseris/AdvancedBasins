@@ -43,11 +43,11 @@ Nd = 10
 params = @strdict Ns Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
-    prefix = "kur_hist", storepatch = false, suffix = "jld2", force = true
+    prefix = "kur_hist", storepatch = false, suffix = "jld2", force = false
 )
 @unpack fractions_curves,Krange = data
 
-rmap = retract_keys_to_consecutive(fractions_curves)
+rmap = Attractors.retract_keys_to_consecutive(fractions_curves)
 for df in fractions_curves
     swap_dict_keys!(df, rmap)
 end

@@ -72,10 +72,10 @@ function continuation_problem(di)
 end
 
 
-Ns = 500
-Nd = 30
-res = 61
-thr = 0.1
+Ns = 1000
+Nd = 10
+res = 101
+thr = 0.2
 params = @strdict Ns res thr Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
@@ -86,4 +86,4 @@ data, file = produce_or_load(
 include("figs_continuation_kuramoto.jl")
 
 fn = splitext(basename(file))
-plot_filled_curves(fractions_curves, Krange,string(a[1], ".png")) 
+plot_filled_curves(fractions_curves, Krange,string(fn[1], ".png")) 
