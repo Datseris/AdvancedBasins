@@ -61,8 +61,8 @@ function continuation_problem(di)
 end
 
 
-Ns = 100
-Nd = 30
+Ns = 1000
+Nd = 10
 params = @strdict Ns Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
@@ -72,7 +72,7 @@ data, file = produce_or_load(
 
 include("figs_continuation_kuramoto.jl")
    
-rmap = retract_keys_to_consecutive(fractions_curves)
+rmap = Attractors.retract_keys_to_consecutive(fractions_curves)
 for df in fractions_curves
     swap_dict_keys!(df, rmap)
 end
