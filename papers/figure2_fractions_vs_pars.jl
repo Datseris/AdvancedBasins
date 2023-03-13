@@ -6,7 +6,7 @@ using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
-include(srcdir("vis", " basins_plotting.jl"))
+include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 include(srcdir("predefined_systems.jl"))
 
@@ -34,14 +34,14 @@ M = 600; z = 3
 xg = yg = zg = range(-z, z; length = M)
 grid = (xg, yg, zg)
 mapper_config = (;
-    mx_chk_fnd_att = 2000,
-    mx_chk_loc_att = 5000,
-    mx_chk_att = 2,
+    mx_chk_fnd_att = 1000,
+    mx_chk_loc_att = 2000,
+    mx_chk_att = 4,
     mx_chk_lost = 100,
     mx_chk_safety = 1e8,
-    Ttr = 100,
-    Δt = 0.1,
-    # stop_at_Δt = true,
+    Ttr = 10,
+    Δt = 0.05,
+    force_non_adaptive = true,
 )
 prange = range(1.34, 1.37; length = P)
 pidx = 2
@@ -92,7 +92,7 @@ push!(attractor_names, entries)
 ds = Eckhardt_9D()
 yg = range(-2, 2; length = 1001)
 grid = ntuple(x -> yg, 9)
-mapper_config = (; sparse = true, Δt = 1.,
+mapper_config = (; sparse = true, Δt = 1.0,
     mx_chk_fnd_att = 2500,
     # stop_at_Δt = true,
     store_once_per_cell = true,
@@ -109,7 +109,7 @@ push!(attractor_names, entries)
 
 # Population dynamics
 ds = competition()
-mapper_config = (; Δt= 1.0, mx_chk_fnd_att=9);
+mapper_config = (; Δt = 1.0, mx_chk_fnd_att=9);
 xg = range(0, 60; length = 300); grid = ntuple(x->xg, 8);
 pidx = :D
 entries = nothing
