@@ -75,7 +75,7 @@ end
 Ns = 1000
 Nd = 10
 res = 101
-thr = 0.2
+thr = Inf
 params = @strdict Ns res thr Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;

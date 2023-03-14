@@ -6,17 +6,18 @@ function plot_filled_curves(fractions, prms, figurename)
     ff = deepcopy(fractions)
 # We rearrange the fractions and we sweep under the carpet the attractors with 
 # less the 5% of basin fraction. They are merged under the label -1
+    thld = 0.02
     for (n,e) in enumerate(fractions)
         vh = Dict();
         d = sort(e; byvalue = true)
         v = collect(values(d))
         k = collect(keys(d))
-        ind = findall(v .> 0.05)
+        ind = findall(v .> thld)
         for i in ind; push!(vh, k[i] => v[i]); end        
-        ind = findall(v .<= 0.05)
+        ind = findall(v .<= thld)
         if length(ind) > 0 
             try 
-                if vh[-1] > 0.05
+                if vh[-1] > thld
                     vh[-1] += sum(v[ind])
                 else 
                     vh[-1] = sum(v[ind])
@@ -55,11 +56,9 @@ function plot_filled_curves(fractions, prms, figurename)
     end
     ylims!(ax, 0, 1)
     axislegend(ax; position = :lt)
-    # display(fig)
 
     # save(string(projectdir(), "/plots/a/", figurename),fig)
     save(figurename,fig)
-# Makie.save("lorenz84_fracs.png", fig; px_per_unit = 4)
 end
 
 function plot_filled_curves_kuramoto(fractions, prms, figurename)
