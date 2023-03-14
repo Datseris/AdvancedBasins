@@ -64,21 +64,21 @@ end
 
 function continuation_E9D(Re_range)
     p = E9DParameters(; Re = 337.)
-    ds = ContinuousDynamicalSystem(E9D!, zeros(9), p, (J,z0, p, n) -> nothing)
     diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
+    ds = CoupledODEs(E9D!, zeros(9), p; diffeq)
     yg = range(-2, 2; length = 1001)
     grid = ntuple(x -> yg, 9)
     mapper = AttractorsViaRecurrences(ds, grid; sparse = true, Δt = 1.,   
-        mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
+        mx_chk_fnd_att = 2500, force_non_adaptive = true, store_once_per_cell = true,
         mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
-        mx_chk_att = 10, diffeq)
+        mx_chk_att = 10)
     pidx = :Re; spp = 2000
     sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 
     ## RECURENCE CONTINUATION
-    continuation = RecurrencesSeedingContinuation(mapper; threshold = Inf)
-    fs, att = basins_fractions_continuation(
-            continuation, Re_range, pidx, sampler;
+    cont = RecurrencesSeededContinuation(mapper; threshold = Inf)
+    fs, att = continuation(
+            cont, Re_range, pidx, sampler;
             show_progress = true, samples_per_parameter = spp
             )
     return fs, att, Re_range
@@ -182,7 +182,7 @@ function plot_bif(arange, att)
 end
 
 
-Re_range = range(320,340, length = 25)
+Re_range = range(300,450, length = 25)
 f,a,r = continuation_E9D(Re_range)
 save("eckhardt_cont_full.jld2","f",f,"a",a,"r",r)
 # # @load "eckhardt_cont_projected.jld2"
