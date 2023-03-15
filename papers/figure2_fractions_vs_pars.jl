@@ -94,16 +94,16 @@ yg = range(-2, 2; length = 1001)
 grid = ntuple(x -> yg, 9)
 mapper_config = (; sparse = true, Δt = 1.0,
     mx_chk_fnd_att = 2500,
-    # stop_at_Δt = true,
+    force_non_adaptive = true, 
     store_once_per_cell = true,
     mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
     mx_chk_att = 10
 )
 pidx = :Re
-# sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
-prange = range(300, 450; length = P)
-entries = nothing
-config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N)
+sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
+prange = range(300, 450; length = 25)
+entries = [1 => "Laminar", 3 => "Turbulent 1", 4 => "Turbulent 2"]
+config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N, Inf, sampler)
 push!(configs, config)
 push!(attractor_names, entries)
 
@@ -142,7 +142,7 @@ for i in 1:L
         add_legend = false, separatorwidth = 0
     )
     # legend
-    entries = attractor_names[i]
+    @show entries = attractor_names[i]
     if !isnothing(entries)
         elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
         labels = last.(entries)
