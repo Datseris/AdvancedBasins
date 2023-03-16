@@ -71,11 +71,12 @@ data, file = produce_or_load(
 @unpack fractions_curves,Krange = data
 
 include("figs_continuation_kuramoto.jl")
+   
+rmap = Attractors.retract_keys_to_consecutive(fractions_curves)
+for df in fractions_curves
+    swap_dict_keys!(df, rmap)
+end
 
-fn = splitext(basename(file))
+fn = splitext(basename(file) )
 plot_filled_curves(fractions_curves, Krange,string(fn[1], ".png")) 
 
-# f,a,Krange = continuation_problem()
-# save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
-# include("figs_continuation_kuramoto.jl")
-# plot_filled_curves(f,Krange, "tmp_fig_group_mcbb.png")
