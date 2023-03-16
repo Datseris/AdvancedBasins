@@ -44,7 +44,7 @@ function continuation_problem(di)
     end
 
     clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
-    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 200, Ttr = 400)
+    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 400, Ttr = 600)
 
     sampler, = statespace_sampler(Random.MersenneTwister(1234);
         min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
@@ -61,19 +61,19 @@ function continuation_problem(di)
 end
 
 
-Ns = 100
-Nd = 30
+Ns = 1000
+Nd = 10
 params = @strdict Ns Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
-    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = false
+    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = true
 )
 @unpack fractions_curves,Krange = data
 
 include("figs_continuation_kuramoto.jl")
 
 fn = splitext(basename(file))
-plot_filled_curves(fractions_curves, Krange,string(a[1], ".png")) 
+plot_filled_curves(fractions_curves, Krange,string(fn[1], ".png")) 
 
 # f,a,Krange = continuation_problem()
 # save("test_fractions_cont_mccb_kur.jld2", "f", f, "a", a, "K", Krange)
