@@ -6,7 +6,7 @@ function plot_filled_curves(fractions, prms, figurename)
     ff = deepcopy(fractions)
 # We rearrange the fractions and we sweep under the carpet the attractors with 
 # less the 5% of basin fraction. They are merged under the label -1
-    thld = 0.02
+    thld = 0.04
     for (n,e) in enumerate(fractions)
         vh = Dict();
         d = sort(e; byvalue = true)

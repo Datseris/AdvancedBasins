@@ -78,11 +78,16 @@ thr = Inf
 params = @strdict Ns res thr Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
-    prefix = "kur_non_adap_rec", storepatch = false, suffix = "jld2", force = true
+    prefix = "kur_non_adap_rec", storepatch = false, suffix = "jld2", force = false
 )
 @unpack fractions_curves,Krange = data
 
 include("figs_continuation_kuramoto.jl")
+
+# swap keys for plotting purposes
+rmap = Dict(14 => 301, 41 => 300)
+for ff in fractions_curves; swap_dict_keys!(ff, rmap); end
+
 
 fn = splitext(basename(file))
 plot_filled_curves(fractions_curves, Krange,string(fn[1], ".png")) 
