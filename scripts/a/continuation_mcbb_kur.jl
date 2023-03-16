@@ -44,7 +44,7 @@ function continuation_problem(di)
     end
 
     clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
-    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 200, Ttr = 400)
+    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 400, Ttr = 600)
 
     sampler, = statespace_sampler(Random.MersenneTwister(1234);
         min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
@@ -66,7 +66,7 @@ Nd = 10
 params = @strdict Ns Nd
 data, file = produce_or_load(
     datadir("data/basins_fractions"), params, continuation_problem;
-    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = false
+    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = true
 )
 @unpack fractions_curves,Krange = data
 
