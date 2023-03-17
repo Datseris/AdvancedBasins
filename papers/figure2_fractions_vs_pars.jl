@@ -9,13 +9,18 @@ using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
 include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
-include(srcdir("additional_predefined_systems.jl"))
+include(srcdir("predefined_systems.jl"))
 
 # Global arguments for all sub-panels
-N = samples_per_parameter = 10
-P = total_parameter_values = 11
-# Diffeq solvers used everywhere (not even stored/saved)
-diffeq = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9, maxiters = Inf)
+
+N = samples_per_parameter = 1000
+P = total_parameter_values = 101
+
+# N = samples_per_parameter = 100
+# P = total_parameter_values = 51
+
+# N = samples_per_parameter = 10
+# P = total_parameter_values = 11
 
 # %% Used systems
 # In `configs` we put an instance of `FractionsRecurrencesConfiguration`
@@ -25,19 +30,19 @@ attractor_names = []
 
 # Lorenz84
 F = 6.886; G = 1.347; a = 0.255; b = 4.0
-ds = Systems.lorenz84(; F, G, a, b)
+ds = lorenz84(; F, G, a, b)
 M = 600; z = 3
 xg = yg = zg = range(-z, z; length = M)
 grid = (xg, yg, zg)
 mapper_config = (;
-    mx_chk_fnd_att = 2000,
-    mx_chk_loc_att = 5000,
-    mx_chk_att = 2,
+    mx_chk_fnd_att = 1000,
+    mx_chk_loc_att = 2000,
+    mx_chk_att = 4,
     mx_chk_lost = 100,
     mx_chk_safety = 1e8,
-    Ttr = 100,
-    Δt = 0.1,
-    stop_at_Δt = true,
+    Ttr = 10,
+    Δt = 0.05,
+    force_non_adaptive = true,
 )
 prange = range(1.34, 1.37; length = P)
 pidx = 2
@@ -46,34 +51,13 @@ config = FractionsRecurrencesConfig("lorenz84", ds, prange, pidx, grid, mapper_c
 push!(configs, config)
 push!(attractor_names, entries)
 
-# Lorenz63
-ds = Systems.lorenz()
-M = 200
-xg = yg = range(-25, 25; length = M)
-zg = range(0, 60; length = M)
-grid = (xg, yg, zg)
-mapper_config = (;
-    mx_chk_fnd_att = 2000,
-    mx_chk_loc_att = 500,
-    mx_chk_att = 2,
-    Ttr = 500,
-    mx_chk_safety = 1e7,
-    Δt = 0.1,
-)
-prange = range(22.0, 26.0; length = P)
-pidx = 2
-entries = [1 => "f.p.", 2 => "f.p.", 3 => "c.a."]
-config = FractionsRecurrencesConfig("lorenz63", ds, prange, pidx, grid, mapper_config, N)
-push!(configs, config)
-push!(attractor_names, entries)
-
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
 X = 16 # number of x variables
-P = 6 # project system to last `P` variables
-ds = lorenz96_ebm_gelbrecht_projected(; N = X, P)
+projection_number = 6 # project system to last
+ds = lorenz96_ebm_gelbrecht_projected(; N = X, P = projection_number)
 g = 101 # division of grid
-xgs = [range(-8, 15; length = g÷10) for i in 1:P]
+xgs = [range(-8, 15; length = g÷10) for i in 1:projection_number]
 Tg = range(230, 350; length = g)
 grid = (xgs..., Tg)
 mapper_config = (;
@@ -107,18 +91,31 @@ push!(attractor_names, entries)
 
 # Eckhardt 9D sheer flow model
 ds = Eckhardt_9D()
-    diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
 yg = range(-2, 2; length = 1001)
 grid = ntuple(x -> yg, 9)
-mapper_config = (; sparse = true, Δt = 1.,   
-        mx_chk_fnd_att = 2500, stop_at_Δt = true, store_once_per_cell = true,
-        mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
-        mx_chk_att = 10, diffeq)
+mapper_config = (; sparse = true, Δt = 1.0,
+    mx_chk_fnd_att = 2500,
+    force_non_adaptive = true, 
+    store_once_per_cell = true,
+    mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
+    mx_chk_att = 10
+)
 pidx = :Re
-# sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
-prange = range(300, 450; length = P)
+sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
+prange = range(300, 450; length = 25)
+entries = [1 => "Laminar", 3 => "Turbulent 1", 4 => "Turbulent 2"]
+config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N, Inf, sampler)
+push!(configs, config)
+push!(attractor_names, entries)
+
+# Population dynamics
+ds = competition()
+mapper_config = (; Δt = 1.0, mx_chk_fnd_att=9);
+xg = range(0, 60; length = 300); grid = ntuple(x->xg, 8);
+pidx = :D
 entries = nothing
-config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N)
+prange = range(0.2, 0.3; length = P)
+config = FractionsRecurrencesConfig("populationdynamics", ds, prange, pidx, grid, mapper_config, N)
 push!(configs, config)
 push!(attractor_names, entries)
 
@@ -129,18 +126,24 @@ for config in configs
     push!(fractions_container, output["fractions_curves"])
 end
 
-
 # %% Make the plot
 systems = getproperty.(configs, :name)
 systems = [split(s, '_')[1] for s in systems]
+systems[1] = "paradigmatic chaotic\nmodel (lorenz84)"
+systems[2] = "high-dim. climate\ntoy model"
+systems[3] = "cell\ndifferentiation"
+systems[4] = "turbulent\nflow"
+systems[5] = "ecological\ncompetition\ndynamics"
 L = length(configs)
-fig, axs = subplotgrid(L, 1; ylabels = systems)
+fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (1000, 800),)
 
 for i in 1:L
     prange = configs[i].prange
-    basins_fractions_plot!(axs[i, 1], fractions_container[i], prange)
+    basins_curves_plot!(axs[i, 1], fractions_container[i], prange;
+        add_legend = false, separatorwidth = 0
+    )
     # legend
-    entries = attractor_names[i]
+    @show entries = attractor_names[i]
     if !isnothing(entries)
         elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
         labels = last.(entries)
@@ -150,4 +153,6 @@ end
 axs[end, 1].xlabel = "parameter"
 rowgap!(fig.layout, 4)
 display(fig)
-wsave(papersdir("figures", "figure2_fractions.pdf"), fig)
+
+# %% Save it
+wsave(papersdir("figures", "figure2_fractions.png"), fig)

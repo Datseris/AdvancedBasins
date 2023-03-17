@@ -28,7 +28,7 @@ fig = Figure()
 axbasins = [Axis(fig[1,i]) for i in 1:3]
 axfrac = Axis(fig[2,:])
 prange = [p[3] for p in ps]
-basins_fractions_plot!(axfrac, reverse(fractions_curves), reverse(prange))
+basins_curves_plot!(axfrac, reverse(fractions_curves), reverse(prange))
 resize_to_layout!(fig)
 fig
 

@@ -7,13 +7,21 @@ versus parameter for a given dynamical system. This is the recurrences version.
 """
 struct FractionsRecurrencesConfig
     name::String
-    ds::GeneralizedDynamicalSystem
+    ds::DynamicalSystem
     prange::AbstractVector
     pidx::Union{Integer, Symbol}
     grid::Tuple
     mapper_config::NamedTuple
     samples_per_parameter::Int
+    threshold::Float64 # `Inf` by default
+    sampler::Function # grid bounds by default
 end
+FractionsRecurrencesConfig(a,b,c,d,e,f,g) = 
+            FractionsRecurrencesConfig(
+                        a,b,c,d,e,f,g,Inf, 
+                        statespace_sampler(Random.MersenneTwister(1234); 
+                        min_bounds = minimum.(e), max_bounds = maximum.(e))[1]
+                )
 
 function fractions_produce_or_load(config::FractionsRecurrencesConfig; force = false)
     # used to obtain a hash from `config` without using "bad" fields like `ds`
@@ -26,18 +34,26 @@ function fractions_produce_or_load(config::FractionsRecurrencesConfig; force = f
         fractions_produce_or_load_f, config, datadir("basins_fractions");
         filename = pure_hash, force, prefix = config.name, tag = false,
     )
+    println("Loaded $(file).")
     return output
 end
 
 function fractions_produce_or_load_f(config::FractionsRecurrencesConfig)
     (; ds, prange, pidx, grid, mapper_config, samples_per_parameter, name) = config
-    mapper = AttractorsViaRecurrences(ds, grid; mapper_config..., diffeq)
-    sampler, = statespace_sampler(Random.MersenneTwister(1234);
-        min_bounds = minimum.(grid), max_bounds = maximum.(grid)
+
+    mapper = AttractorsViaRecurrences(ds, grid; mapper_config...)
+
+    # sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    #     min_bounds = minimum.(grid), max_bounds = maximum.(grid)
+    # )
+    sampler = config.sampler
+
+    rsc = RecurrencesSeededContinuation(mapper;
+        threshold = config.threshold
     )
-    continuation = RecurrencesSeedingContinuation(mapper; threshold = Inf)
-    fractions_curves, attractors_info = basins_fractions_continuation(
-        continuation, prange, pidx, sampler;
+
+    fractions_curves, attractors_info = continuation(
+        rsc, prange, pidx, sampler;
         show_progress = true, samples_per_parameter
     )
     # Notice that we do not store the system's parameters or dynamic rule.

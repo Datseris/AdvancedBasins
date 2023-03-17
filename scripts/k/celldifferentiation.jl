@@ -49,7 +49,7 @@ num_fps = length.(values(fractions_curves))
 # using JLD2
 # jldsave("$(datadir())/fractions_curves/fractions_curves_celldifferentiation.jld2"; fractions_curves, params=Kds)
 
-basins_fractions_plot(fractions_curves, Kds)
+basins_curves_plot(fractions_curves, Kds)
 
 # ---------------------------------------------------------------------------- #
 #                            Replicating the results                           #
