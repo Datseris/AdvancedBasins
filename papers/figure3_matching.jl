@@ -91,13 +91,80 @@ push!(fractions_container, aggregated_fractions)
 push!(ylabels, "competition")
 push!(pranges, prange)
 
-# 3. Sync basin
-# match using the metric we define in the book, the order parameter R,
-# the magnitude of the mean field of the frequencies,
-# equation (9.8) from our book.
-# In the paper we say "in practice, each point in the attractor
-# can be considered as one point in time." So you can average
-# R over the points of the attractor.
+# 3. Second order Kuramoto network: recurrences 
+
+Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
+p = KuramotoParameters(; Nd)
+diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
+ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
+
+_complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y; 
+_proj_state(y) = y[Nd+1:2*Nd]
+psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
+yg = range(-12, 12; length = res)
+grid = ntuple(x -> yg, dimension(psys))
+mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,   
+    show_progress = true, mx_chk_fnd_att = 100,
+    mx_chk_safety = Int(1e7),
+    force_non_adaptive = true,
+    mx_chk_loc_att = 10)
+
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
+)
+
+# cont_rec = RecurrencesSeededContinuation(mapper; threshold = thr)
+Kidx = :K
+Krange = range(0., 10.; length = 40)
+# fractions_curves, attractors_info = continuation(
+#     cont_rec, Krange, Kidx, sampler;
+#     show_progress = true, samples_per_parameter = Ns
+# )
+
+
+config = FractionsRecurrencesConfig("2nd_order_kur_recurrences", psys, Krange, Kidx, grid, mapper_config, N, Inf, sampler)
+output = fractions_produce_or_load(config; force = false)
+@unpack fractions_curves, attractors_info = output
+
+
+entries = [1 => "Unsync", 2 => "Partial synch"]
+push!(attractor_names, entries)
+push!(fractions_container, aggregated_fractions)
+push!(ylabels, "2º order Kur. rec.")
+push!(pranges, prange)
+
+#
+# 4. Second order Kuramoto network: MCBB 
+
+clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
+mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 400, Ttr = 600)
+
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
+)
+
+function continuation_problem(di)
+    @unpack Nd, Ns = di
+    group_cont = GroupAcrossParameterContinuation(mapper)
+    fractions_curves, attractors_info = continuation(
+            group_cont, Krange, Kidx, sampler;
+            show_progress = true, samples_per_parameter = Ns)
+    return @strdict(fractions_curves, attractors_info, Krange)
+end
+
+params = @strdict N Nd
+data, file = produce_or_load(
+    datadir("basins_fractions"), params, continuation_problem;
+    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = true
+)
+@unpack fractions_curves,Krange = data
+
+rmap = Attractors.retract_keys_to_consecutive(fractions_curves)
+for df in fractions_curves
+    swap_dict_keys!(df, rmap)
+end
+
+
 
 # %% plot
 L = length(ylabels)
