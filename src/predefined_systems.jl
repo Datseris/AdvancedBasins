@@ -1,5 +1,6 @@
 using DynamicalSystemsBase
 using OrdinaryDiffEq: Tsit5, Vern9
+using SparseArrays
 const diffeq_fast = (alg = Tsit5(), reltol = 1e-6, abstol = 1e-6)
 const diffeq_slow = (alg = Vern9(), reltol = 1e-9, abstol = 1e-9)
 diffeq_default = diffeq_slow # choose high accuracy by default

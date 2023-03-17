@@ -2,8 +2,10 @@ using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
+using Graphs
+using PredefinedDynamicalSystems
 include(srcdir("vis", "basins_plotting.jl"))
-include(srcdir("additional_predefined_systems.jl"))
+include(srcdir("predefined_systems.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 
 # %% Prepare the fractions
@@ -39,11 +41,11 @@ mapper = AttractorsViaRecurrences(ds, (xg, yg),
     mx_chk_fnd_att = 3000,
     mx_chk_loc_att = 3000
 )
-continuation = RecurrencesSeedingContinuation(mapper;
-    threshold = 0.99, method = distance_function
+cont= RecurrencesSeededContinuation(mapper;
+    threshold = 0.99, distance = distance_function
 )
-fractions_curves, attractors_info = basins_fractions_continuation(
-    continuation, prange, pidx, sampler;
+fractions_curves, attractors_info = continuation(
+    cont, prange, pidx, sampler;
     show_progress = false, samples_per_parameter = N
 )
 
@@ -94,14 +96,14 @@ push!(pranges, prange)
 # 3. Second order Kuramoto network: recurrences 
 
 Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
-p = KuramotoParameters(; Nd)
+p = KuramotoParameters(; K = 1., N = Nd)
 diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
 ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
 
 _complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y; 
 _proj_state(y) = y[Nd+1:2*Nd]
 psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
-yg = range(-12, 12; length = res)
+yg = range(-12, 12; length = 51)
 grid = ntuple(x -> yg, dimension(psys))
 mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,   
     show_progress = true, mx_chk_fnd_att = 100,
@@ -136,19 +138,58 @@ push!(pranges, prange)
 #
 # 4. Second order Kuramoto network: MCBB 
 
+# function mcbb_continuation_problem(di)
+#     @unpack Nd, Ns = di
+    
+#     p = KuramotoParameters(;K =1.,  N = Nd)
+#     diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
+#     ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
+
+#     function featurizer(A, t)
+#         return [mean(A[:, i]) for i in Nd+1:2*Nd]
+#     end
+
+#     clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
+#     mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 400, Ttr = 600)
+
+#     sampler, = statespace_sampler(Random.MersenneTwister(1234);
+#         min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
+#     )
+
+#     group_cont = GroupAcrossParameterContinuation(mapper)
+#     Kidx = :K
+#     Krange = range(0., 10; length = 20)
+#     fractions_curves, attractors_info = continuation(
+#                 group_cont, Krange, Kidx, sampler;
+#                 show_progress = true, samples_per_parameter = Ns)
+
+#     return @strdict(fractions_curves, attractors_info, Krange)
+# end
+# Ns = N
+# Nd = 10
+# params = @strdict Ns Nd
+# data, file = produce_or_load(
+#     datadir("data/basins_fractions"), params, continuation_problem;
+#     prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = true
+# )
+
 clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
-mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 400, Ttr = 600)
+    using Statistics:mean
+    function featurizer_mcbb(A, t)
+        return [mean(A[:, i]) for i in Nd+1:2*Nd]
+    end
+mapper = AttractorsViaFeaturizing(ds, featurizer_mcbb, clusterspecs; T = 400, Ttr = 600)
 
 sampler, = statespace_sampler(Random.MersenneTwister(1234);
     min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
 )
 
 function continuation_problem(di)
-    @unpack Nd, Ns = di
+    @unpack Nd, N = di
     group_cont = GroupAcrossParameterContinuation(mapper)
     fractions_curves, attractors_info = continuation(
             group_cont, Krange, Kidx, sampler;
-            show_progress = true, samples_per_parameter = Ns)
+            show_progress = true, samples_per_parameter = N)
     return @strdict(fractions_curves, attractors_info, Krange)
 end
 
