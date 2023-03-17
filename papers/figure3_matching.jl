@@ -115,19 +115,12 @@ sampler, = statespace_sampler(Random.MersenneTwister(1234);
     min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
 )
 
-# cont_rec = RecurrencesSeededContinuation(mapper; threshold = thr)
 Kidx = :K
 Krange = range(0., 10.; length = 40)
-# fractions_curves, attractors_info = continuation(
-#     cont_rec, Krange, Kidx, sampler;
-#     show_progress = true, samples_per_parameter = Ns
-# )
-
 
 config = FractionsRecurrencesConfig("2nd_order_kur_recurrences", psys, Krange, Kidx, grid, mapper_config, N, Inf, sampler)
 output = fractions_produce_or_load(config; force = false)
 @unpack fractions_curves, attractors_info = output
-
 
 entries = [1 => "Unsync", 2 => "Partial synch"]
 push!(attractor_names, entries)
@@ -137,41 +130,6 @@ push!(pranges, prange)
 
 #
 # 4. Second order Kuramoto network: MCBB 
-
-# function mcbb_continuation_problem(di)
-#     @unpack Nd, Ns = di
-    
-#     p = KuramotoParameters(;K =1.,  N = Nd)
-#     diffeq = (alg = Tsit5(), reltol = 1e-9, maxiters = 1e6)
-#     ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
-
-#     function featurizer(A, t)
-#         return [mean(A[:, i]) for i in Nd+1:2*Nd]
-#     end
-
-#     clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
-#     mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 400, Ttr = 600)
-
-#     sampler, = statespace_sampler(Random.MersenneTwister(1234);
-#         min_bounds = [-pi*ones(N) -pi*ones(N)], max_bounds = [pi*ones(N) pi*ones(N)]
-#     )
-
-#     group_cont = GroupAcrossParameterContinuation(mapper)
-#     Kidx = :K
-#     Krange = range(0., 10; length = 20)
-#     fractions_curves, attractors_info = continuation(
-#                 group_cont, Krange, Kidx, sampler;
-#                 show_progress = true, samples_per_parameter = Ns)
-
-#     return @strdict(fractions_curves, attractors_info, Krange)
-# end
-# Ns = N
-# Nd = 10
-# params = @strdict Ns Nd
-# data, file = produce_or_load(
-#     datadir("data/basins_fractions"), params, continuation_problem;
-#     prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = true
-# )
 
 clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
     using Statistics:mean
@@ -206,6 +164,11 @@ for df in fractions_curves
 end
 
 
+entries = [1 => "Unsync", 2 => "Partial synch"]
+push!(attractor_names, entries)
+push!(fractions_container, aggregated_fractions)
+push!(ylabels, "2º order Kur. rec.")
+push!(pranges, prange)
 
 # %% plot
 L = length(ylabels)
