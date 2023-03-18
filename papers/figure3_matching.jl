@@ -5,6 +5,7 @@ using Random
 using Graphs
 using PredefinedDynamicalSystems
 include(srcdir("vis", "basins_plotting.jl"))
+include(srcdir("vis", "figs_kuramoto.jl"))
 include(srcdir("predefined_systems.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 
@@ -122,14 +123,17 @@ config = FractionsRecurrencesConfig("2nd_order_kur_recurrences", psys, Krange, K
 output = fractions_produce_or_load(config; force = false)
 @unpack fractions_curves, attractors_info = output
 
-entries = [1 => "Unsync", 2 => "Partial synch"]
+fc = aggregate_fractions(fractions_curves)
+
+entries = [-1 => "Outliers", 1 => "Unsynch", 41 => "Partial synch", 14 => "Synch"]
 push!(attractor_names, entries)
-push!(fractions_container, aggregated_fractions)
+push!(fractions_container, fc)
 push!(ylabels, "2º order Kur. rec.")
-push!(pranges, prange)
+push!(pranges, Krange)
 
 #
 # 4. Second order Kuramoto network: MCBB 
+#
 
 clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
     using Statistics:mean
@@ -154,21 +158,71 @@ end
 params = @strdict N Nd
 data, file = produce_or_load(
     datadir("basins_fractions"), params, continuation_problem;
-    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = true
+    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = false
 )
 @unpack fractions_curves,Krange = data
 
-rmap = Attractors.retract_keys_to_consecutive(fractions_curves)
-for df in fractions_curves
-    swap_dict_keys!(df, rmap)
+fc = aggregate_fractions(fractions_curves)
+
+
+entries = [-1 => "Outliers", 1 => "Unsynch", 39 => "Partial synch", 47 => "Synch"]
+push!(attractor_names, entries)
+push!(fractions_container, fc)
+push!(ylabels, "2º order Kur. rec., MCBB")
+push!(pranges, Krange)
+
+#
+# 5. Classic kuramoto with Histogram grouping 
+#
+
+function kuramoto_problem(di)
+    @unpack Nd, N = di
+    K = 3.; ω = range(-1, 1; length = Nd)
+    ds = Systems.kuramoto(Nd; K = K, ω = ω)
+
+    function featurizer(A, t)
+        u = A[end,:]
+        return abs(mean(exp.(im .* u)))
+    end
+
+    clusterspecs = GroupViaHistogram(FixedRectangularBinning(range(0., 1.; step = 0.2), 1))
+    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 200)
+
+    sampler, = statespace_sampler(Random.MersenneTwister(1234);
+        min_bounds = -pi*ones(Nd), max_bounds = pi*ones(Nd)
+    )
+
+    group_cont = GroupAcrossParameterContinuation(mapper)
+    Kidx = :K
+    Krange = range(0., 2; length = 40)
+    fractions_curves, attractors_info = continuation(
+                group_cont, Krange, Kidx, sampler;
+                show_progress = true, samples_per_parameter = N)
+
+    return @strdict(fractions_curves, attractors_info, Krange)
 end
 
+# N = 2000
+Nd = 10
+params = @strdict N Nd
+data, file = produce_or_load(
+    datadir("basins_fractions"), params, kuramoto_problem;
+    prefix = "kur_hist", storepatch = false, suffix = "jld2", force = false
+)
+@unpack fractions_curves,Krange = data
 
-entries = [1 => "Unsync", 2 => "Partial synch"]
+
+entries = [1 => "0 ≤ r < 0.2", 
+           2 => "0.2 ≤ r < 0.4",
+           3 => "0.4 ≤ r < 0.6",
+           4 =>  "0.6 ≤ r < 0.8",
+           5 => "0.8 ≤ r < 1."]
+# entries = [-1 => "Outliers", 1 => "Unsynch", 39 => "Partial synch", 47 => "Synch"]
 push!(attractor_names, entries)
-push!(fractions_container, aggregated_fractions)
-push!(ylabels, "2º order Kur. rec.")
-push!(pranges, prange)
+push!(fractions_container, fractions_curves)
+push!(ylabels, "Kur. hist.")
+push!(pranges, Krange)
+
 
 # %% plot
 L = length(ylabels)
@@ -177,7 +231,7 @@ display(fig)
 
 for i in 1:L
     @show i
-    basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i])
+    basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i]; add_legend = false)
     # legend
     entries = attractor_names[i]
     if !isnothing(entries)
