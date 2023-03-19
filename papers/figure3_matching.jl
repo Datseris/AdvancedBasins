@@ -124,8 +124,12 @@ output = fractions_produce_or_load(config; force = false)
 @unpack fractions_curves, attractors_info = output
 
 fc = aggregate_fractions(fractions_curves)
-
-entries = [-1 => "Outliers", 1 => "Unsynch", 41 => "Partial synch", 14 => "Synch"]
+# @show rmap = Attractors.retract_keys_to_consecutive(fc)
+rmap = Dict( 41 => 2, 14 => 3)
+for df in fc
+    swap_dict_keys!(df, rmap)
+end
+entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
 push!(ylabels, "2º order Kur. rec.")
@@ -163,9 +167,12 @@ data, file = produce_or_load(
 @unpack fractions_curves,Krange = data
 
 fc = aggregate_fractions(fractions_curves)
-
-
-entries = [-1 => "Outliers", 1 => "Unsynch", 39 => "Partial synch", 47 => "Synch"]
+rmap = Attractors.retract_keys_to_consecutive(fc)
+# rmap = Dict( -1 => 1, 1 => 2, 39 => 3, 47 => 4)
+for df in fc
+    swap_dict_keys!(df, rmap)
+end
+entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
 push!(ylabels, "2º order Kur. rec., MCBB")
