@@ -132,7 +132,7 @@ end
 entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
-push!(ylabels, "2º order Kur. rec.")
+push!(ylabels, "2º Kur rec.")
 push!(pranges, Krange)
 
 #
@@ -175,7 +175,7 @@ end
 entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
-push!(ylabels, "2º order Kur. rec., MCBB")
+push!(ylabels, "2º Kur MCBB")
 push!(pranges, Krange)
 
 #
@@ -232,8 +232,8 @@ push!(pranges, Krange)
 
 
 # %% plot
-L = length(ylabels)
-fig, axs = subplotgrid(L, 1; ylabels)
+L = length(ylabels); resolution = (800, 1000)
+fig, axs = subplotgrid(L, 1; ylabels, resolution)
 display(fig)
 
 for i in 1:L
