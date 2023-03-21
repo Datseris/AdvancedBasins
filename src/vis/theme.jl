@@ -1,4 +1,4 @@
-using GLMakie
+using CairoMakie
 import Downloads
 
 path = joinpath(@__DIR__, "plottheme.jl")
