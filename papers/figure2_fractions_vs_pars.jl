@@ -13,7 +13,7 @@ include(srcdir("predefined_systems.jl"))
 
 # Global arguments for all sub-panels
 
-N = samples_per_parameter = 1000
+N = samples_per_parameter = 100
 P = total_parameter_values = 101
 
 # N = samples_per_parameter = 100
@@ -55,7 +55,7 @@ push!(attractor_names, entries)
 # Should yield Fig. 3 of the paper
 X = 32 # number of x variables
 ds = lorenz96_ebm_gelbrecht_projected(; N = X, S = 18.0)
-g = 51 # division of grid
+g = 101 # division of grid
 
 Mg = range(-2, 10; length = g)
 Eg = range(0, 50; length = g) # this depends o number of variables
@@ -87,6 +87,7 @@ mapper_config = (;mx_chk_safety = Int(1e9))
 grid = ntuple(i -> range(0, 100, length=101), 3)
 pidx = 1 # parameter Kd
 prange = range(1e-2, 1e2; length = P)
+entries = [i => "gene $(i)" for i in 1:7]
 entries = nothing
 config = FractionsRecurrencesConfig("cells", ds, prange, pidx, grid, mapper_config, N)
 push!(configs, config)
@@ -106,7 +107,7 @@ mapper_config = (;
 )
 pidx = :Re
 sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
-prange = range(300, 450; length = 25)
+prange = range(300, 450; length = P)
 entries = [1 => "laminar", 3 => "turbulent 1", 4 => "turbulent 2"]
 config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N, Inf, sampler)
 push!(configs, config)
@@ -133,11 +134,11 @@ end
 # %% Make the plot
 systems = getproperty.(configs, :name)
 systems = [split(s, '_')[1] for s in systems]
-systems[1] = "paradigmatic chaotic\nmodel (lorenz84)"
-systems[2] = "high-dim. climate\ntoy model"
-systems[3] = "cell\ndifferentiation"
+systems[1] = "paradigmatic\nchaotic\nmodel"
+systems[2] = "climate\ntoy model"
+systems[3] = "cell\ngenotypes"
 systems[4] = "turbulent\nflow"
-systems[5] = "ecological\ncompetition\ndynamics"
+systems[5] = "competition\ndynamics"
 L = length(configs)
 fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (1000, 800),)
 
@@ -151,7 +152,9 @@ for i in 1:L
     if !isnothing(entries)
         elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
         labels = last.(entries)
-        axislegend(axs[i, 1], elements, labels; position = :rt)
+        axislegend(axs[i, 1], elements, labels;
+            position = :rt, nbanks = length(entries) > 5 ? 2 : 1,
+        )
     end
 end
 axs[end, 1].xlabel = "parameter"
