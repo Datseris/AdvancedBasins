@@ -5,6 +5,7 @@
 using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
+# using GLMakie, Random
 using Random
 include(srcdir("vis", "basins_plotting.jl"))
 include(srcdir("fractions_produce_or_load.jl"))

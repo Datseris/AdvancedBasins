@@ -2,8 +2,11 @@ using DrWatson
 @quickactivate
 using Attractors, OrdinaryDiffEq, CairoMakie
 using Random
+using Graphs
+using PredefinedDynamicalSystems
 include(srcdir("vis", "basins_plotting.jl"))
-include(srcdir("additional_predefined_systems.jl"))
+include(srcdir("vis", "figs_kuramoto.jl"))
+include(srcdir("predefined_systems.jl"))
 include(srcdir("fractions_produce_or_load.jl"))
 
 # %% Prepare the fractions
@@ -39,11 +42,11 @@ mapper = AttractorsViaRecurrences(ds, (xg, yg),
     mx_chk_fnd_att = 3000,
     mx_chk_loc_att = 3000
 )
-continuation = RecurrencesSeedingContinuation(mapper;
-    threshold = 0.99, method = distance_function
+cont= RecurrencesSeededContinuation(mapper;
+    threshold = 0.99, distance = distance_function
 )
-fractions_curves, attractors_info = basins_fractions_continuation(
-    continuation, prange, pidx, sampler;
+fractions_curves, attractors_info = continuation(
+    cont, prange, pidx, sampler;
     show_progress = false, samples_per_parameter = N
 )
 
@@ -91,22 +94,151 @@ push!(fractions_container, aggregated_fractions)
 push!(ylabels, "competition")
 push!(pranges, prange)
 
-# 3. Sync basin
-# match using the metric we define in the book, the order parameter R,
-# the magnitude of the mean field of the frequencies,
-# equation (9.8) from our book.
-# In the paper we say "in practice, each point in the attractor
-# can be considered as one point in time." So you can average
-# R over the points of the attractor.
+# 3. Second order Kuramoto network: recurrences 
+
+Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
+p = KuramotoParameters(; K = 1., N = Nd)
+diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
+ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
+
+_complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y; 
+_proj_state(y) = y[Nd+1:2*Nd]
+psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
+yg = range(-12, 12; length = 51)
+grid = ntuple(x -> yg, dimension(psys))
+mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,   
+    show_progress = true, mx_chk_fnd_att = 100,
+    mx_chk_safety = Int(1e7),
+    force_non_adaptive = true,
+    mx_chk_loc_att = 10)
+
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
+)
+
+Kidx = :K
+Krange = range(0., 10.; length = 40)
+
+config = FractionsRecurrencesConfig("2nd_order_kur_recurrences", psys, Krange, Kidx, grid, mapper_config, N, Inf, sampler)
+output = fractions_produce_or_load(config; force = false)
+@unpack fractions_curves, attractors_info = output
+
+fc = aggregate_fractions(fractions_curves)
+# @show rmap = Attractors.retract_keys_to_consecutive(fc)
+rmap = Dict( 41 => 2, 14 => 3)
+for df in fc
+    swap_dict_keys!(df, rmap)
+end
+entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
+push!(attractor_names, entries)
+push!(fractions_container, fc)
+push!(ylabels, "2º Kur rec.")
+push!(pranges, Krange)
+
+#
+# 4. Second order Kuramoto network: MCBB 
+#
+
+clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
+    using Statistics:mean
+    function featurizer_mcbb(A, t)
+        return [mean(A[:, i]) for i in Nd+1:2*Nd]
+    end
+mapper = AttractorsViaFeaturizing(ds, featurizer_mcbb, clusterspecs; T = 400, Ttr = 600)
+
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
+)
+
+function continuation_problem(di)
+    @unpack Nd, N = di
+    group_cont = GroupAcrossParameterContinuation(mapper)
+    fractions_curves, attractors_info = continuation(
+            group_cont, Krange, Kidx, sampler;
+            show_progress = true, samples_per_parameter = N)
+    return @strdict(fractions_curves, attractors_info, Krange)
+end
+
+params = @strdict N Nd
+data, file = produce_or_load(
+    datadir("basins_fractions"), params, continuation_problem;
+    prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = false
+)
+@unpack fractions_curves,Krange = data
+
+fc = aggregate_fractions(fractions_curves)
+rmap = Attractors.retract_keys_to_consecutive(fc)
+# rmap = Dict( -1 => 1, 1 => 2, 39 => 3, 47 => 4)
+for df in fc
+    swap_dict_keys!(df, rmap)
+end
+entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
+push!(attractor_names, entries)
+push!(fractions_container, fc)
+push!(ylabels, "2º Kur MCBB")
+push!(pranges, Krange)
+
+#
+# 5. Classic kuramoto with Histogram grouping 
+#
+
+function kuramoto_problem(di)
+    @unpack Nd, N = di
+    K = 3.; ω = range(-1, 1; length = Nd)
+    ds = Systems.kuramoto(Nd; K = K, ω = ω)
+
+    function featurizer(A, t)
+        u = A[end,:]
+        return abs(mean(exp.(im .* u)))
+    end
+
+    clusterspecs = GroupViaHistogram(FixedRectangularBinning(range(0., 1.; step = 0.2), 1))
+    mapper = AttractorsViaFeaturizing(ds, featurizer, clusterspecs; T = 200)
+
+    sampler, = statespace_sampler(Random.MersenneTwister(1234);
+        min_bounds = -pi*ones(Nd), max_bounds = pi*ones(Nd)
+    )
+
+    group_cont = GroupAcrossParameterContinuation(mapper)
+    Kidx = :K
+    Krange = range(0., 2; length = 40)
+    fractions_curves, attractors_info = continuation(
+                group_cont, Krange, Kidx, sampler;
+                show_progress = true, samples_per_parameter = N)
+
+    return @strdict(fractions_curves, attractors_info, Krange)
+end
+
+# N = 2000
+Nd = 10
+params = @strdict N Nd
+data, file = produce_or_load(
+    datadir("basins_fractions"), params, kuramoto_problem;
+    prefix = "kur_hist", storepatch = false, suffix = "jld2", force = false
+)
+@unpack fractions_curves,Krange = data
+
+
+entries = [1 => "0 ≤ r < 0.2", 
+           2 => "0.2 ≤ r < 0.4",
+           3 => "0.4 ≤ r < 0.6",
+           4 =>  "0.6 ≤ r < 0.8",
+           5 => "0.8 ≤ r < 1."]
+# entries = [-1 => "Outliers", 1 => "Unsynch", 39 => "Partial synch", 47 => "Synch"]
+push!(attractor_names, entries)
+push!(fractions_container, fractions_curves)
+push!(ylabels, "Kur. hist.")
+push!(pranges, Krange)
+
 
 # %% plot
-L = length(ylabels)
-fig, axs = subplotgrid(L, 1; ylabels)
+L = length(ylabels); resolution = (800, 1000)
+fig, axs = subplotgrid(L, 1; ylabels, resolution)
 display(fig)
 
 for i in 1:L
     @show i
-    basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i])
+    basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i]; add_legend = false)
     # legend
     entries = attractor_names[i]
     if !isnothing(entries)
