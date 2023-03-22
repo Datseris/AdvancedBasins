@@ -31,7 +31,7 @@ function lorenz96_ebm_gelbrecht_rule!(dx, x, p, t)
     ΔT = 60.0
     α = 2.0
     β = 1.0
-    σ = 1/180
+    σ = 1/180 # not to the power of 4, because we do it at the equations below
     E = 0.5*sum(x[n]^2 for n in 1:N)
     𝓔 = E/N
     forcing = F*(1 + β*(T - Tbar)/ΔT)
@@ -55,11 +55,43 @@ function lorenz96_ebm_gelbrecht(; N = 32, S = 8.0)
     return ds
 end
 # Above system, but projected to the last `P` dimensions
-function lorenz96_ebm_gelbrecht_projected(; P = 6, N = 32, kwargs...)
+function lorenz96_ebm_gelbrecht_projected(; P = nothing, N = 32, kwargs...)
     ds = lorenz96_ebm_gelbrecht(; N, kwargs...)
-    projection = (N-P+1):(N+1)
-    complete_state = zeros(N-length(projection)+1)
-    pinteg = ProjectedDynamicalSystem(ds, projection, complete_state)
+
+    # Project in same space as the paper:
+    if isnothing(P)
+        function gelbrecht_fig3_projection(u)
+            T = u[end]
+            M = E = 0.0
+            @inbounds for i in 1:N
+                M += u[i]
+                E += u[i]^2
+            end
+            M /= N
+            E /= 2N
+            return SVector(M, E, T)
+        end
+
+        dummy = zeros(N+1)
+
+        function gelbrect_fig3_complete(y)
+            dummy[end] = y[end]
+            M = y[1]
+            for i in 1:N
+                dummy[i] = M + (i%3)*0.01
+            end
+            return dummy
+        end
+
+        pinteg = ProjectedDynamicalSystem(ds, gelbrecht_fig3_projection, gelbrect_fig3_complete)
+    else
+        # Projection of the last `P` Lorenz96 state variables
+        P == N && return ds
+        projection = (N-P+1):(N+1)
+        complete_state = zeros(N-length(projection)+1)
+        pinteg = ProjectedDynamicalSystem(ds, projection, complete_state)
+    end
+
     return pinteg
 end
 
@@ -279,4 +311,47 @@ function CompetitionDynamics(fig="1")
     μs = zeros(Float64, N)
     Rcoups = zeros(Float64, 3)
     return CompetitionDynamics(rs, ms, Ss, μs, Rcoups, Ks, cs, D)
+end
+
+
+# https://doi.org/10.5194/esd-12-601-2021
+function wunderling_4tipping_rule(u, p, t)
+    # variables:
+    # u[1] = greenland
+    # u[2] = west antarctica
+    # u[3] = amoc
+    # u[4] = amazon rainforest
+    (; ΔGMT, T_limit, d, s, τ) = p
+    # notice d is divded by 10, and also notice that the sum term
+    # is just a matrix-vector multiplication
+    sum_term = d*s*(u .+ 1)
+    du = @. -u^3 + u + sqrt(4/27)*ΔGMT/T_limit + sum_term
+
+    return du ./ τ
+end
+
+struct WunderlingParams
+    ΔGMT::Float64
+    T_limit::SVector{4, Float64}
+    d::Float64
+    s::SMatrix{4,4,Float64,16}
+    τ::SVector{4, Float64}
+end
+
+function wunderling_4tipping()
+    p = WunderlingParams(
+        2,
+        SVector(1.6, 3.0, 4.5, 4.0),
+        0.02,
+        SMatrix{4,4}([
+            0     7.7  6.4  0;
+            1.3   0    0    0;
+            -5.7  1.2  0    1.0;
+            0     0    0    0
+        ]),
+        SVector(4900, 2400, 300, 50.0),
+    )
+    u0 = SVector(-1, -1, -1, -1.0)
+    ds = CoupledODEs(wunderling_4tipping, u0, p)
+    return ds
 end
