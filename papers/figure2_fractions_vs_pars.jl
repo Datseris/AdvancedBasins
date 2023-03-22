@@ -52,24 +52,27 @@ push!(attractor_names, entries)
 
 # Climate bistable toy model from Gelbrecht et al. 2021
 # Should yield Fig. 3 of the paper
-X = 16 # number of x variables
-projection_number = 6 # project system to last
-ds = lorenz96_ebm_gelbrecht_projected(; N = X, P = projection_number)
-g = 101 # division of grid
-xgs = [range(-8, 15; length = g÷10) for i in 1:projection_number]
+X = 32 # number of x variables
+ds = lorenz96_ebm_gelbrecht_projected(; N = X, S = 18.0)
+g = 51 # division of grid
+
+Mg = range(-2, 10; length = g)
+Eg = range(0, 50; length = g) # this depends o number of variables
 Tg = range(230, 350; length = g)
-grid = (xgs..., Tg)
+grid = (Mg, Eg, Tg)
 mapper_config = (;
-    Ttr = 500,
-    Δt = 0.25,
+    Ttr = 400,
+    Δt = 0.1,
     # We don't care about finding attractors accurately here, because they are
     # so well separated in temperature dimension, and they are only 2.
     # But then again, the worse we identify tje attractor cells, the slower the convergence
     # of new initial conditions will be...?
-    mx_chk_fnd_att = 10,
-    mx_chk_loc_att = 10,
-    mx_chk_safety = 1e6,
+    mx_chk_fnd_att = 1000,
+    mx_chk_loc_att = 1000,
+    mx_chk_lost = 500,
+    mx_chk_safety = 1e7,
 )
+
 pidx = 1
 prange = range(5, 19; length = P)
 entries = [1 => "cold", 2 => "warm"]
@@ -92,17 +95,18 @@ push!(attractor_names, entries)
 ds = Eckhardt_9D()
 yg = range(-2, 2; length = 1001)
 grid = ntuple(x -> yg, 9)
-mapper_config = (; sparse = true, Δt = 1.0,
+mapper_config = (;
+    sparse = true, Δt = 1.0,
     mx_chk_fnd_att = 2500,
-    force_non_adaptive = true, 
+    force_non_adaptive = true,
     store_once_per_cell = true,
-    mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7), show_progress = true,
+    mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7),
     mx_chk_att = 10
 )
 pidx = :Re
 sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 prange = range(300, 450; length = 25)
-entries = [1 => "Laminar", 3 => "Turbulent 1", 4 => "Turbulent 2"]
+entries = [1 => "laminar", 3 => "turbulent 1", 4 => "turbulent 2"]
 config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N, Inf, sampler)
 push!(configs, config)
 push!(attractor_names, entries)

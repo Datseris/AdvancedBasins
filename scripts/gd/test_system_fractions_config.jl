@@ -16,7 +16,7 @@ P = total_parameter_values = 101
 # algorithm
 X = 32 # number of x variables
 ds = lorenz96_ebm_gelbrecht_projected(; N = X, S = 18.0)
-g = 101 # division of grid
+g = 51 # division of grid
 
 Mg = range(-2, 10; length = g)
 Eg = range(0, 50; length = g) # this depends o number of variables
