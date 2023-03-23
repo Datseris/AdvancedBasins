@@ -46,7 +46,7 @@ mapper_config = (;
 )
 prange = range(1.34, 1.37; length = P)
 pidx = 2
-entries = [1 => "f.p.", 2 => "l.c.", 3 => "c.a."]
+entries = [1 => "fixed", 2 => "periodic", 3 => "chaotic"]
 config = FractionsRecurrencesConfig("lorenz84", ds, prange, pidx, grid, mapper_config, N)
 push!(configs, config)
 push!(attractor_names, entries)
@@ -102,7 +102,8 @@ mapper_config = (;
     mx_chk_fnd_att = 2500,
     force_non_adaptive = true,
     store_once_per_cell = true,
-    mx_chk_loc_att = 2500, mx_chk_safety = Int(1e7),
+    mx_chk_loc_att = 2500,
+    mx_chk_safety = Int(1e7),
     mx_chk_att = 10
 )
 pidx = :Re
@@ -124,7 +125,7 @@ config = FractionsRecurrencesConfig("populationdynamics", ds, prange, pidx, grid
 push!(configs, config)
 push!(attractor_names, entries)
 
-# %% Run all systems through the `produce_or_load` pipeline (see `src`)
+# Run all systems through the `produce_or_load` pipeline (see `src`)
 fractions_container = []
 for config in configs
     output = fractions_produce_or_load(config; force = false)
@@ -134,13 +135,13 @@ end
 # %% Make the plot
 systems = getproperty.(configs, :name)
 systems = [split(s, '_')[1] for s in systems]
-systems[1] = "paradigmatic\nchaotic\nmodel"
+systems[1] = "chaotic\nlorenz84"
 systems[2] = "climate\ntoy model"
 systems[3] = "cell\ngenotypes"
 systems[4] = "turbulent\nflow"
 systems[5] = "competition\ndynamics"
 L = length(configs)
-fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (1000, 800),)
+fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (800, 800),)
 
 for i in 1:L
     prange = configs[i].prange
@@ -148,7 +149,6 @@ for i in 1:L
         add_legend = false, separatorwidth = 0
     )
     # legend
-    @show entries = attractor_names[i]
     if !isnothing(entries)
         elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
         labels = last.(entries)
@@ -156,6 +156,7 @@ for i in 1:L
             position = :rt, nbanks = length(entries) > 5 ? 2 : 1,
         )
     end
+    hideydecorations!(axs[i, 1]; label = false)
 end
 axs[end, 1].xlabel = "parameter"
 rowgap!(fig.layout, 4)

@@ -53,13 +53,13 @@ fractions_curves, attractors_info = continuation(
 entries = [
  -1 => "diverge",
   1 => "chaotic",
-  2 => "period  13",
+  2 => "period 13",
   3 => "chaotic",
   4 => "period 7",
 ]
 push!(attractor_names, entries)
 push!(fractions_container, fractions_curves)
-push!(ylabels, "henon")
+push!(ylabels, "henon\nmatching")
 push!(pranges, prange)
 
 
@@ -91,22 +91,22 @@ aggregated_fractions, aggregated_info = aggregate_attractor_fractions(
 entries = [1 => "alive", 2 => "extinct"]
 push!(attractor_names, entries)
 push!(fractions_container, aggregated_fractions)
-push!(ylabels, "competition")
+push!(ylabels, "competition\naggregation")
 push!(pranges, prange)
 
-# 3. Second order Kuramoto network: recurrences 
+# 3. Second order Kuramoto network: recurrences
 
 Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
 p = KuramotoParameters(; K = 1., N = Nd)
 diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
 ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
 
-_complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y; 
+_complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y;
 _proj_state(y) = y[Nd+1:2*Nd]
 psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
 yg = range(-12, 12; length = 51)
 grid = ntuple(x -> yg, dimension(psys))
-mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,   
+mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,
     show_progress = true, mx_chk_fnd_att = 100,
     mx_chk_safety = Int(1e7),
     force_non_adaptive = true,
@@ -129,14 +129,14 @@ rmap = Dict( 41 => 2, 14 => 3)
 for df in fc
     swap_dict_keys!(df, rmap)
 end
-entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
+entries = [1 => "outliers", 2 => "unsynch", 3 => "partial synch", 4 => "synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
-push!(ylabels, "2º Kur rec.")
+push!(ylabels, "2º Kur.\nrecurr.")
 push!(pranges, Krange)
 
 #
-# 4. Second order Kuramoto network: MCBB 
+# 4. Second order Kuramoto network: MCBB
 #
 
 clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
@@ -164,7 +164,7 @@ data, file = produce_or_load(
     datadir("basins_fractions"), params, continuation_problem;
     prefix = "kur_mcbb", storepatch = false, suffix = "jld2", force = false
 )
-@unpack fractions_curves,Krange = data
+@unpack fractions_curves, Krange = data
 
 fc = aggregate_fractions(fractions_curves)
 rmap = Attractors.retract_keys_to_consecutive(fc)
@@ -172,14 +172,14 @@ rmap = Attractors.retract_keys_to_consecutive(fc)
 for df in fc
     swap_dict_keys!(df, rmap)
 end
-entries = [1 => "Outliers", 2 => "Unsynch", 3 => "Partial synch", 4 => "Synch"]
+entries = [1 => "outliers", 2 => "unsynch", 3 => "partial synch", 4 => "synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
-push!(ylabels, "2º Kur MCBB")
+push!(ylabels, "2º Kur.\nMCBB")
 push!(pranges, Krange)
 
 #
-# 5. Classic kuramoto with Histogram grouping 
+# 5. Classic kuramoto with Histogram grouping
 #
 
 function kuramoto_problem(di)
@@ -219,34 +219,46 @@ data, file = produce_or_load(
 @unpack fractions_curves,Krange = data
 
 
-entries = [1 => "0 ≤ r < 0.2", 
-           2 => "0.2 ≤ r < 0.4",
-           3 => "0.4 ≤ r < 0.6",
-           4 =>  "0.6 ≤ r < 0.8",
-           5 => "0.8 ≤ r < 1."]
+entries = [
+    # 1 => "0 ≤ R < 0.2",
+    # 2 => "0.2 ≤ R < 0.4",
+    # 3 => "0.4 ≤ R < 0.6",
+    # 4 =>  "0.6 ≤ R < 0.8",
+    # 5 => "0.8 ≤ R < 1.",
+    1 => "0-0.2",
+    2 => "0.2-0.4",
+    3 => "0.4-0.6",
+    4 =>  "0.6-0.8",
+    5 => "0.8-1",
+]
 # entries = [-1 => "Outliers", 1 => "Unsynch", 39 => "Partial synch", 47 => "Synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fractions_curves)
-push!(ylabels, "Kur. hist.")
+push!(ylabels, "1º Kur.\nhistogram")
 push!(pranges, Krange)
 
 
 # %% plot
-L = length(ylabels); resolution = (800, 1000)
-fig, axs = subplotgrid(L, 1; ylabels, resolution)
-display(fig)
+L = length(ylabels)
+fig, axs = subplotgrid(L, 1; ylabels, resolution = (800, 800))
 
 for i in 1:L
-    @show i
     basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i]; add_legend = false)
     # legend
     entries = attractor_names[i]
     if !isnothing(entries)
-        elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
+        elements = [PolyElement(color = COLORS[k]) for k in eachindex(entries)]
         labels = last.(entries)
-        axislegend(axs[i, 1], elements, labels; position = :rt)
+        axislegend(axs[i, 1], elements, labels;
+            position = :rt, nbanks = 2,
+        )
     end
+    hideydecorations!(axs[i, 1]; label = false)
+    # axs[i, 1].yticklabelsvisible = false
 end
 axs[end, 1].xlabel = "parameter"
 rowgap!(fig.layout, 4)
+display(fig)
+
+# %% Save it
 wsave(papersdir("figures", "figure3_matching.png"), fig)
