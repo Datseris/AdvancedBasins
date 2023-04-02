@@ -141,7 +141,7 @@ systems[3] = "cell\ngenotypes"
 systems[4] = "turbulent\nflow"
 systems[5] = "ecosystem\ndynamics"
 L = length(configs)
-fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (800, 800),)
+fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (800, 800), figure_padding = 20)
 
 for i in 1:L
     prange = configs[i].prange

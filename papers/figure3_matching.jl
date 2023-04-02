@@ -98,6 +98,7 @@ push!(pranges, prange)
 #
 # 3. Second order Kuramoto network: MCBB
 #
+Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
 
 clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
     using Statistics:mean
@@ -143,7 +144,6 @@ push!(pranges, Krange)
 # 4. Second order Kuramoto network: recurrences
 #
 
-Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
 p = KuramotoParameters(; K = 1., N = Nd)
 diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
 ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
@@ -244,7 +244,7 @@ push!(pranges, Krange)
 
 # %% plot
 L = length(ylabels)
-fig, axs = subplotgrid(L, 1; ylabels, resolution = (800, 800))
+fig, axs = subplotgrid(L, 1; ylabels, resolution = (800, 800), figure_padding = 20)
 
 for i in 1:L
     basins_curves_plot!(axs[i, 1], fractions_container[i], pranges[i]; add_legend = false)
