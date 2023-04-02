@@ -46,7 +46,7 @@ mapper_config = (;
 )
 prange = range(1.34, 1.37; length = P)
 pidx = 2
-entries = [1 => "fixed", 2 => "periodic", 3 => "chaotic"]
+entries = [1 => "fixed", 2 => "chaotic", 3 => "periodic"]
 config = FractionsRecurrencesConfig("lorenz84", ds, prange, pidx, grid, mapper_config, N)
 push!(configs, config)
 push!(attractor_names, entries)
@@ -109,7 +109,7 @@ mapper_config = (;
 pidx = :Re
 sampler, = Attractors.statespace_sampler(Random.MersenneTwister(1234); min_bounds = ones(9).*(-1.), max_bounds = ones(9).*(1.))
 prange = range(300, 450; length = P)
-entries = [1 => "laminar", 3 => "turbulent 1", 4 => "turbulent 2"]
+entries = [1 => "laminar", 3 => "turbulent 1", 4 => "turbulent 2", 6 => "laminar"]
 config = FractionsRecurrencesConfig("eckhardt", ds, prange, pidx, grid, mapper_config, N, Inf, sampler)
 push!(configs, config)
 push!(attractor_names, entries)
@@ -139,12 +139,13 @@ systems[1] = "chaotic\nlorenz84"
 systems[2] = "climate\ntoy model"
 systems[3] = "cell\ngenotypes"
 systems[4] = "turbulent\nflow"
-systems[5] = "competition\ndynamics"
+systems[5] = "ecosystem\ndynamics"
 L = length(configs)
 fig, axs = subplotgrid(L, 1; ylabels = systems, resolution = (800, 800),)
 
 for i in 1:L
     prange = configs[i].prange
+    entries = attractor_names[i]
     basins_curves_plot!(axs[i, 1], fractions_container[i], prange;
         add_legend = false, separatorwidth = 0
     )
@@ -153,7 +154,7 @@ for i in 1:L
         elements = [PolyElement(color = COLORS[k]) for k in first.(entries)]
         labels = last.(entries)
         axislegend(axs[i, 1], elements, labels;
-            position = :rt, nbanks = length(entries) > 5 ? 2 : 1,
+            position = :rt, nbanks = length(entries) > 3 ? 2 : 1,
         )
     end
     hideydecorations!(axs[i, 1]; label = false)

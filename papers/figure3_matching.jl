@@ -94,49 +94,9 @@ push!(fractions_container, aggregated_fractions)
 push!(ylabels, "competition\naggregation")
 push!(pranges, prange)
 
-# 3. Second order Kuramoto network: recurrences
-
-Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
-p = KuramotoParameters(; K = 1., N = Nd)
-diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
-ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
-
-_complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y;
-_proj_state(y) = y[Nd+1:2*Nd]
-psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
-yg = range(-12, 12; length = 51)
-grid = ntuple(x -> yg, dimension(psys))
-mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,
-    show_progress = true, mx_chk_fnd_att = 100,
-    mx_chk_safety = Int(1e7),
-    force_non_adaptive = true,
-    mx_chk_loc_att = 10)
-
-sampler, = statespace_sampler(Random.MersenneTwister(1234);
-    min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
-)
-
-Kidx = :K
-Krange = range(0., 10.; length = 40)
-
-config = FractionsRecurrencesConfig("2nd_order_kur_recurrences", psys, Krange, Kidx, grid, mapper_config, N, Inf, sampler)
-output = fractions_produce_or_load(config; force = false)
-@unpack fractions_curves, attractors_info = output
-
-fc = aggregate_fractions(fractions_curves)
-# @show rmap = Attractors.retract_keys_to_consecutive(fc)
-rmap = Dict( 41 => 2, 14 => 3)
-for df in fc
-    swap_dict_keys!(df, rmap)
-end
-entries = [1 => "outliers", 2 => "unsynch", 3 => "partial synch", 4 => "synch"]
-push!(attractor_names, entries)
-push!(fractions_container, fc)
-push!(ylabels, "2º Kur.\nrecurr.")
-push!(pranges, Krange)
 
 #
-# 4. Second order Kuramoto network: MCBB
+# 3. Second order Kuramoto network: MCBB
 #
 
 clusterspecs = GroupViaClustering(optimal_radius_method = "silhouettes", max_used_features = 500, use_mmap = true)
@@ -166,7 +126,7 @@ data, file = produce_or_load(
 )
 @unpack fractions_curves, Krange = data
 
-fc = aggregate_fractions(fractions_curves)
+fc = aggregate_small_fractions(fractions_curves)
 rmap = Attractors.retract_keys_to_consecutive(fc)
 # rmap = Dict( -1 => 1, 1 => 2, 39 => 3, 47 => 4)
 for df in fc
@@ -176,6 +136,50 @@ entries = [1 => "outliers", 2 => "unsynch", 3 => "partial synch", 4 => "synch"]
 push!(attractor_names, entries)
 push!(fractions_container, fc)
 push!(ylabels, "2º Kur.\nMCBB")
+push!(pranges, Krange)
+
+
+#
+# 4. Second order Kuramoto network: recurrences
+#
+
+Nd = 10 # in this case this is the number of oscillators, the system dimension is twice this value
+p = KuramotoParameters(; K = 1., N = Nd)
+diffeq = (alg = Vern9(), reltol = 1e-9, maxiters = 1e8)
+ds = CoupledODEs(second_order_kuramoto!, zeros(2*Nd), p; diffeq)
+
+_complete(y) = (length(y) == Nd) ? zeros(2*Nd) : y;
+_proj_state(y) = y[Nd+1:2*Nd]
+psys = ProjectedDynamicalSystem(ds, _proj_state, _complete)
+yg = range(-12, 12; length = 51)
+grid = ntuple(x -> yg, dimension(psys))
+mapper = AttractorsViaRecurrences(psys, grid; sparse = true, Δt = 0.01,
+    show_progress = true, mx_chk_fnd_att = 100,
+    mx_chk_safety = Int(1e7),
+    force_non_adaptive = true,
+    mx_chk_loc_att = 10)
+
+sampler, = statespace_sampler(Random.MersenneTwister(1234);
+    min_bounds = [-pi*ones(Nd) -pi*ones(Nd)], max_bounds = [pi*ones(Nd) pi*ones(Nd)]
+)
+
+Kidx = :K
+Krange = range(0., 10.; length = 40)
+
+config = FractionsRecurrencesConfig("2nd_order_kur_recurrences", psys, Krange, Kidx, grid, mapper_config, N, Inf, sampler)
+output = fractions_produce_or_load(config; force = false)
+@unpack fractions_curves, attractors_info = output
+
+fc = aggregate_small_fractions(fractions_curves)
+# @show rmap = Attractors.retract_keys_to_consecutive(fc)
+rmap = Dict( 41 => 2, 14 => 3)
+for df in fc
+    swap_dict_keys!(df, rmap)
+end
+entries = [1 => "outliers", 2 => "unsynch", 3 => "partial synch", 4 => "synch"]
+push!(attractor_names, entries)
+push!(fractions_container, fc)
+push!(ylabels, "2º Kur.\nrecurr.")
 push!(pranges, Krange)
 
 #

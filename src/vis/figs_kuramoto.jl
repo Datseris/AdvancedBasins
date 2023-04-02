@@ -1,37 +1,35 @@
 
-function aggregate_fractions(fractions)
-    ff = deepcopy(fractions)
-# We rearrange the fractions and we sweep under the carpet the attractors with 
+# We rearrange the fractions and we sweep under the carpet the attractors with
 # less the 4% of basin fraction. They are merged under the label -1
-    thld = 0.04
+function aggregate_small_fractions(fractions; threshold = 0.04)
+    ff = deepcopy(fractions)
     for (n,e) in enumerate(fractions)
         vh = Dict();
         d = sort(e; byvalue = true)
         v = collect(values(d))
         k = collect(keys(d))
-        ind = findall(v .> thld)
-        for i in ind; push!(vh, k[i] => v[i]); end        
-        ind = findall(v .<= thld)
-        if length(ind) > 0 
-            try 
-                if vh[-1] > thld
+        ind = findall(v .> threshold)
+        for i in ind; push!(vh, k[i] => v[i]); end
+        ind = findall(v .<= threshold)
+        if length(ind) > 0
+            try
+                if vh[-1] > threshold
                     vh[-1] += sum(v[ind])
-                else 
+                else
                     vh[-1] = sum(v[ind])
                 end
-            catch 
+            catch
                 push!(vh, -1 => sum(v[ind]))
             end
         end
         ff[n] = vh
     end
-    # fractions_curves = ff
     return ff
 end
 
 function plot_filled_curves_kuramoto(fractions, prms, figurename)
     fractions_curves = deepcopy(fractions)
-    labs = ["0 ≤ r < 0.2" 
+    labs = ["0 ≤ r < 0.2"
          "0.2 ≤ r < 0.4"
          "0.4 ≤ r < 0.6"
          "0.6 ≤ r < 0.8"
